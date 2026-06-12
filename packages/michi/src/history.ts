@@ -15,7 +15,9 @@ export class History {
   private listeners = new Set<Listener>();
 
   constructor() {
-    window.addEventListener("popstate", () => this.notify());
+    if (typeof window !== "undefined") {
+      window.addEventListener("popstate", () => this.notify());
+    }
   }
 
   push(to: string): void {

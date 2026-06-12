@@ -59,3 +59,11 @@ export function Link({
     </a>
   );
 }
+
+export function useParams<
+  T extends Record<string, string> = Record<string, string>,
+>(): T {
+  const state = useRouterState();
+  const match = state.matches[0];
+  return (match?.params ?? {}) as T;
+}

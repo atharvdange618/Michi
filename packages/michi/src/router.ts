@@ -1,4 +1,5 @@
 import { History } from "./history";
+import { matchRoute } from "./matcher";
 import type { RouteDefinition, RouterState, RouteMatch } from "./types";
 
 export class Router {
@@ -27,16 +28,20 @@ export class Router {
   }
 
   private match(pathname: string): RouteMatch[] {
-    const route = this.routes.find((r) => r.path === pathname);
-    if (!route) return [];
-    return [
-      {
-        routeId: route.path,
-        params: {},
-        loaderData: undefined,
-        component: route.component,
-      },
-    ];
+    for (const route of this.routes) {
+      const params = matchRoute(route.path, pathname);
+      if (params !== null) {
+        return [
+          {
+            routeId: route.path,
+            params,
+            loaderData: undefined,
+            component: route.component,
+          },
+        ];
+      }
+    }
+    return [];
   }
 
   navigate(to: string): void {
