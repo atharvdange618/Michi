@@ -1,5 +1,5 @@
 import { History } from "./history";
-import { matchRoute } from "./matcher";
+import { matchTree } from "./matcher";
 import type { RouteDefinition, RouterState, RouteMatch } from "./types";
 
 export class Router {
@@ -28,23 +28,18 @@ export class Router {
   }
 
   private match(pathname: string): RouteMatch[] {
-    for (const route of this.routes) {
-      const params = matchRoute(route.path, pathname);
-      if (params !== null) {
-        return [
-          {
-            routeId: route.path,
-            params,
-            loaderData: undefined,
-            component: route.component,
-          },
-        ];
-      }
-    }
-    return [];
+    return matchTree(this.routes, pathname);
   }
 
   navigate(to: string): void {
+    if (!to || typeof to !== "string") {
+      console.warn("router.navigate() requires a non-empty string path");
+    }
+    if (!to.startsWith("/") && !to.startsWith("http")) {
+      console.warn(
+        `router.navigate("${to}") — paths should start with "/"`,
+      );
+    }
     this.history.push(to);
   }
 
