@@ -20,3 +20,7 @@ dist/
 
 # Logs
 *.log
+
+/notes
+AGENTS.md
+CONTEXT.md
