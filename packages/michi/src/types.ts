@@ -9,6 +9,7 @@ export type ParsedLocation = {
 export type RouteDefinition = {
   path: string;
   component: ComponentType;
+  children?: RouteDefinition[];
 };
 
 export type RouteMatch = {

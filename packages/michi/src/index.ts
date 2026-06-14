@@ -5,4 +5,11 @@ export type {
   ParsedLocation,
 } from "./types";
 export { Router } from "./router";
-export { RouterProvider, Link, useRouterState, useParams } from "./react";
+export {
+  RouterProvider,
+  Link,
+  Outlet,
+  useRouter,
+  useRouterState,
+  useParams,
+} from "./react";
