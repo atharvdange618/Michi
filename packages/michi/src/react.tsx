@@ -1,7 +1,14 @@
-import React, { createContext, useContext, useSyncExternalStore } from "react";
+import React, {
+  type ReactNode,
+  createContext,
+  useCallback,
+  useContext,
+  useSyncExternalStore,
+} from "react";
 import type { Router } from "./router";
 import type { RouterState } from "./types";
 import { NotFound } from "./components/not-found";
+import { Loading } from "./components/loading";
 
 const RouterContext = createContext<Router | null>(null);
 
@@ -19,8 +26,12 @@ export function useRouter(): Router {
 
 export function useRouterState(): RouterState {
   const router = useRouter();
+  const subscribe = useCallback(
+    (cb: () => void) => router.subscribe(cb),
+    [router],
+  );
   return useSyncExternalStore(
-    (cb) => router.subscribe(cb),
+    subscribe,
     () => router.getState(),
     () => router.getState(),
   );
@@ -37,20 +48,43 @@ export function useParams<
   return params as T;
 }
 
-export function RouterProvider({ router }: { router: Router }) {
+export function useLoaderData<T = unknown>(): T {
+  const state = useRouterState();
+
+  const matchIndex = useContext(OutletContext) - 1;
+  const match = state.matches[matchIndex];
+  return match?.loaderData as T;
+}
+
+export function RouterProvider({
+  router,
+  loading,
+}: {
+  router: Router;
+  loading?: ReactNode;
+}) {
   // useState + useEffect would work but has a subscription gap and tears in
   // concurrent mode. useSyncExternalStore was built exactly for external stores.
+  const subscribe = useCallback(
+    (cb: () => void) => router.subscribe(cb),
+    [router],
+  );
   const state = useSyncExternalStore(
-    (cb) => router.subscribe(cb),
+    subscribe,
     () => router.getState(),
     () => router.getState(),
   );
 
   const rootMatch = state.matches[0];
+  const loadingComponent = loading ?? <Loading />;
 
   return (
     <RouterContext.Provider value={router}>
-      {rootMatch ? (
+      {state.status === "loading" && !rootMatch ? (
+        loadingComponent
+      ) : state.status === "error" && !rootMatch ? (
+        <NotFound />
+      ) : rootMatch ? (
         <OutletContext.Provider value={1}>
           <rootMatch.component />
         </OutletContext.Provider>
@@ -79,18 +113,18 @@ export function Outlet({
   );
 }
 
-export function Link({
-  to,
-  children,
-  ...rest
-}: {
+export const Link = React.forwardRef<HTMLAnchorElement, {
   to: string;
   children: React.ReactNode;
-} & React.AnchorHTMLAttributes<HTMLAnchorElement>) {
+} & React.AnchorHTMLAttributes<HTMLAnchorElement>>(function Link(
+  { to, children, ...rest },
+  ref,
+) {
   const router = useRouter();
 
   return (
     <a
+      ref={ref}
       href={to}
       {...rest}
       onClick={(e) => {
@@ -102,4 +136,4 @@ export function Link({
       {children}
     </a>
   );
-}
+});

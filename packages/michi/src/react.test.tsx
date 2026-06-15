@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { render, screen, fireEvent, cleanup } from "@testing-library/react";
+import { useMemo } from "react";
+import {
+  render,
+  screen,
+  fireEvent,
+  cleanup,
+  waitFor,
+} from "@testing-library/react";
 import { Router } from "./router";
 import {
   RouterProvider,
@@ -8,38 +15,49 @@ import {
   useRouter,
   useRouterState,
   useParams,
+  useLoaderData,
 } from "./react";
 
 let mockPathname = "/";
 
-vi.mock("./history", () => {
+function setMockPathname(pathname: string) {
+  mockPathname = pathname;
+}
+
+function resetMockPathname() {
+  mockPathname = "/";
+}
+
+const MockHistory = vi.hoisted(() => {
   const listeners = new Set<
     (loc: { pathname: string; search: string; hash: string }) => void
   >();
-  return {
-    History: class MockHistory {
-      push(to: string) {
-        mockPathname = to;
-        const loc = { pathname: mockPathname, search: "", hash: "" };
-        listeners.forEach((l) => l(loc));
-      }
-      getLocation() {
-        return { pathname: mockPathname, search: "", hash: "" };
-      }
-      subscribe(
-        cb: (loc: { pathname: string; search: string; hash: string }) => void,
-      ) {
-        listeners.add(cb);
-        return () => {
-          listeners.delete(cb);
-        };
-      }
-    },
+  return class MockHistory {
+    push(to: string) {
+      mockPathname = to;
+      const loc = { pathname: mockPathname, search: "", hash: "" };
+      listeners.forEach((l) => l(loc));
+    }
+    getLocation() {
+      return { pathname: mockPathname, search: "", hash: "" };
+    }
+    subscribe(
+      cb: (loc: { pathname: string; search: string; hash: string }) => void,
+    ) {
+      listeners.add(cb);
+      return () => {
+        listeners.delete(cb);
+      };
+    }
   };
 });
 
+vi.mock("./history", () => ({
+  History: MockHistory,
+}));
+
 afterEach(() => {
-  mockPathname = "/";
+  resetMockPathname();
   cleanup();
 });
 
@@ -48,7 +66,7 @@ function TestRouter({
 }: {
   routes: import("./types").RouteDefinition[];
 }) {
-  const router = new Router(routes);
+  const router = useMemo(() => new Router(routes), []);
   return <RouterProvider router={router} />;
 }
 
@@ -67,8 +85,8 @@ describe("useRouter", () => {
 });
 
 describe("RouterProvider", () => {
-  it("renders the matched route component", () => {
-    mockPathname = "/test";
+  it("renders the matched route component", async () => {
+    setMockPathname("/test");
     const routes = [
       {
         path: "__root",
@@ -82,12 +100,14 @@ describe("RouterProvider", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    expect(screen.getByText("root")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("root")).toBeDefined();
+    });
     expect(screen.getByText("test page")).toBeDefined();
   });
 
-  it("renders NotFound when no route matches", () => {
-    mockPathname = "/nope";
+  it("renders NotFound when no route matches", async () => {
+    setMockPathname("/nope");
     const routes = [
       {
         path: "__root",
@@ -101,13 +121,15 @@ describe("RouterProvider", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    expect(screen.getByText("404")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("404")).toBeDefined();
+    });
   });
 });
 
 describe("Outlet", () => {
-  it("renders child route inside parent layout", () => {
-    mockPathname = "/child";
+  it("renders child route inside parent layout", async () => {
+    setMockPathname("/child");
     function Layout() {
       return (
         <div>
@@ -124,12 +146,14 @@ describe("Outlet", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    expect(screen.getByText("layout")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("layout")).toBeDefined();
+    });
     expect(screen.getByText("child")).toBeDefined();
   });
 
-  it("renders custom fallback when no child matches", () => {
-    mockPathname = "/nope";
+  it("renders custom fallback when no child matches", async () => {
+    setMockPathname("/nope");
     function Layout() {
       return (
         <div>
@@ -145,13 +169,15 @@ describe("Outlet", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    expect(screen.getByText("custom fallback")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("custom fallback")).toBeDefined();
+    });
   });
 });
 
 describe("Link", () => {
-  it("renders an anchor with href", () => {
-    mockPathname = "/";
+  it("renders an anchor with href", async () => {
+    setMockPathname("/");
     const routes = [
       {
         path: "__root",
@@ -163,12 +189,14 @@ describe("Link", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    const link = screen.getByText("About");
-    expect(link.getAttribute("href")).toBe("/about");
+    await waitFor(() => {
+      const link = screen.getByText("About");
+      expect(link.getAttribute("href")).toBe("/about");
+    });
   });
 
-  it("calls router.navigate on click and prevents default", () => {
-    mockPathname = "/";
+  it("calls router.navigate on click and prevents default", async () => {
+    setMockPathname("/");
     const routes = [
       {
         path: "__root",
@@ -184,6 +212,9 @@ describe("Link", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("Go")).toBeDefined();
+    });
 
     const link = screen.getByText("Go");
     const event = new MouseEvent("click", { bubbles: true, cancelable: true });
@@ -191,13 +222,15 @@ describe("Link", () => {
     fireEvent(link, event);
 
     expect(preventDefault).toHaveBeenCalled();
-    expect(screen.getByText("about page")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("about page")).toBeDefined();
+    });
   });
 });
 
 describe("useParams", () => {
-  it("returns merged params from all matches", () => {
-    mockPathname = "/user/atharv";
+  it("returns merged params from all matches", async () => {
+    setMockPathname("/user/atharv");
     let capturedParams: Record<string, string> = {};
     function ParamsCapture() {
       capturedParams = useParams();
@@ -211,13 +244,15 @@ describe("useParams", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    expect(capturedParams).toEqual({ id: "atharv" });
+    await waitFor(() => {
+      expect(capturedParams).toEqual({ id: "atharv" });
+    });
   });
 });
 
 describe("useRouterState", () => {
-  it("returns current router state", () => {
-    mockPathname = "/test";
+  it("returns current router state", async () => {
+    setMockPathname("/test");
     let capturedState: ReturnType<typeof useRouterState> | null = null;
     function StateCapture() {
       capturedState = useRouterState();
@@ -231,15 +266,17 @@ describe("useRouterState", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    expect(capturedState).not.toBeNull();
+    await waitFor(() => {
+      expect(capturedState).not.toBeNull();
+      expect(capturedState!.status).toBe("idle");
+    });
     expect(capturedState!.matches[1].routeId).toBe("/test");
-    expect(capturedState!.status).toBe("idle");
   });
 });
 
 describe("Link props forwarding", () => {
-  it("forwards style prop to anchor", () => {
-    mockPathname = "/";
+  it("forwards style prop to anchor", async () => {
+    setMockPathname("/");
     const routes = [
       {
         path: "__root",
@@ -251,12 +288,14 @@ describe("Link props forwarding", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    const link = screen.getByText("styled link");
-    expect(link.getAttribute("style")).toContain("color");
+    await waitFor(() => {
+      const link = screen.getByText("styled link");
+      expect(link.getAttribute("style")).toContain("color");
+    });
   });
 
-  it("forwards className to anchor", () => {
-    mockPathname = "/";
+  it("forwards className to anchor", async () => {
+    setMockPathname("/");
     const routes = [
       {
         path: "__root",
@@ -268,12 +307,14 @@ describe("Link props forwarding", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    const link = screen.getByText("classed link");
-    expect(link.className).toBe("my-link");
+    await waitFor(() => {
+      const link = screen.getByText("classed link");
+      expect(link.className).toBe("my-link");
+    });
   });
 
-  it("calls user's onClick handler after navigation", () => {
-    mockPathname = "/";
+  it("calls user's onClick handler after navigation", async () => {
+    setMockPathname("/");
     const onClick = vi.fn();
     const routes = [
       {
@@ -292,14 +333,17 @@ describe("Link props forwarding", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("click me")).toBeDefined();
+    });
     fireEvent.click(screen.getByText("click me"));
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
 
 describe("Outlet edge cases", () => {
-  it("renders NotFound fallback by default when no child matches", () => {
-    mockPathname = "/no-child";
+  it("renders NotFound fallback by default when no child matches", async () => {
+    setMockPathname("/no-child");
     function Layout() {
       return (
         <div>
@@ -316,12 +360,14 @@ describe("Outlet edge cases", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    expect(screen.getByText("layout-without-child")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("layout-without-child")).toBeDefined();
+    });
     expect(screen.getByText("404")).toBeDefined();
   });
 
-  it("renders 3 levels of nested Outlets", () => {
-    mockPathname = "/a/b/c";
+  it("renders 3 levels of nested Outlets", async () => {
+    setMockPathname("/a/b/c");
     const routes = [
       {
         path: "__root",
@@ -362,7 +408,9 @@ describe("Outlet edge cases", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    expect(screen.getByText("root-nested")).toBeDefined();
+    await waitFor(() => {
+      expect(screen.getByText("root-nested")).toBeDefined();
+    });
     expect(screen.getByText("level-1")).toBeDefined();
     expect(screen.getByText("level-2")).toBeDefined();
     expect(screen.getByText("level-3")).toBeDefined();
@@ -370,8 +418,8 @@ describe("Outlet edge cases", () => {
 });
 
 describe("useParams typed", () => {
-  it("returns typed params with generic", () => {
-    mockPathname = "/user/atharv";
+  it("returns typed params with generic", async () => {
+    setMockPathname("/user/atharv");
     let capturedParams: { id: string } = { id: "" };
     function ParamsCapture() {
       capturedParams = useParams<{ id: string }>();
@@ -385,6 +433,154 @@ describe("useParams typed", () => {
       },
     ];
     render(<TestRouter routes={routes} />);
-    expect(capturedParams.id).toBe("atharv");
+    await waitFor(() => {
+      expect(capturedParams.id).toBe("atharv");
+    });
+  });
+});
+
+describe("useLoaderData", () => {
+  it("returns resolved loader data", async () => {
+    const loader = vi.fn().mockResolvedValue({ name: "atharv" });
+    let capturedData: unknown = undefined;
+
+    function DataPage() {
+      capturedData = useLoaderData();
+      return <div>{(capturedData as { name: string }).name}</div>;
+    }
+
+    setMockPathname("/user/atharv");
+    const routes = [
+      {
+        path: "__root",
+        component: () => (
+          <div>
+            <span>root</span>
+            <Outlet />
+          </div>
+        ),
+        children: [
+          { path: "/user/$id", component: DataPage, loader },
+        ],
+      },
+    ];
+
+    render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("atharv")).toBeDefined();
+    });
+
+    expect(capturedData).toEqual({ name: "atharv" });
+    expect(loader).toHaveBeenCalled();
+  });
+
+  it("each nested route gets its own loader data", async () => {
+    const rootLoader = vi.fn().mockResolvedValue({ role: "admin" });
+    const childLoader = vi.fn().mockResolvedValue({ name: "atharv" });
+
+    let rootData: unknown;
+    let childData: unknown;
+
+    function RootPage() {
+      rootData = useLoaderData();
+      return (
+        <div>
+          <span>root-data</span>
+          <Outlet />
+        </div>
+      );
+    }
+
+    function ChildPage() {
+      childData = useLoaderData();
+      return <span>child-data</span>;
+    }
+
+    setMockPathname("/page");
+    const routes = [
+      {
+        path: "__root",
+        component: RootPage,
+        loader: rootLoader,
+        children: [
+          { path: "/page", component: ChildPage, loader: childLoader },
+        ],
+      },
+    ];
+
+    render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("child-data")).toBeDefined();
+    });
+
+    expect(rootData).toEqual({ role: "admin" });
+    expect(childData).toEqual({ name: "atharv" });
+  });
+});
+
+describe("Loading state", () => {
+  it("shows custom loading component during initial load", async () => {
+    let resolveLoader: (value: unknown) => void;
+    const loader = vi.fn().mockImplementation(
+      () => new Promise((resolve) => { resolveLoader = resolve; }),
+    );
+
+    setMockPathname("/slow");
+    const routes = [
+      {
+        path: "__root",
+        component: () => <Outlet />,
+        children: [
+          { path: "/slow", component: () => <div>page</div>, loader },
+        ],
+      },
+    ];
+
+    const router = new Router(routes);
+    const { container } = render(
+      <RouterProvider
+        router={router}
+        loading={<div>custom loading</div>}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("custom loading");
+    });
+
+    resolveLoader!(null);
+    await waitFor(() => {
+      expect(screen.getByText("page")).toBeDefined();
+    });
+  });
+
+  it("shows default Loading component when no loading prop", async () => {
+    let resolveLoader: (value: unknown) => void;
+    const loader = vi.fn().mockImplementation(
+      () => new Promise((resolve) => { resolveLoader = resolve; }),
+    );
+
+    setMockPathname("/slow");
+    const routes = [
+      {
+        path: "__root",
+        component: () => <Outlet />,
+        children: [
+          { path: "/slow", component: () => <div>page</div>, loader },
+        ],
+      },
+    ];
+
+    const router = new Router(routes);
+    const { container } = render(<RouterProvider router={router} />);
+
+    await waitFor(() => {
+      expect(container.textContent).toContain("loading");
+    });
+
+    resolveLoader!(null);
+    await waitFor(() => {
+      expect(screen.getByText("page")).toBeDefined();
+    });
   });
 });
