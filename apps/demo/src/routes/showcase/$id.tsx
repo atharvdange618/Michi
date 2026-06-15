@@ -1,12 +1,7 @@
-import { useLoaderData, type LoaderContext } from "michi";
-import { fetchUser, type User } from "../../mocks/api";
+import { useParams } from "michi";
 
-export async function loader({ params }: LoaderContext<{ id: string }>) {
-  return fetchUser(params.id);
-}
-
-export default function UserPage() {
-  const user = useLoaderData<User>();
+export default function ParamsShowcasePage() {
+  const params = useParams<{ id: string }>();
 
   return (
     <div style={{ maxWidth: "640px" }}>
@@ -18,12 +13,12 @@ export default function UserPage() {
           margin: "0 0 0.5rem",
         }}
       >
-        User Profile
+        useParams
       </h1>
       <p style={{ fontSize: "15px", color: "#666", margin: "0 0 1.5rem" }}>
-        This page uses a <code>loader</code> + <code>useLoaderData()</code> to
-        fetch user data before rendering. The loader runs during navigation,
-        and the component receives the resolved data.
+        This page uses <code>useParams()</code> to read dynamic segments
+        directly from the URL - no loader needed. The hook merges params from
+        all matched routes in the tree.
       </p>
 
       <div
@@ -41,20 +36,27 @@ export default function UserPage() {
             borderBottom: "1px solid #e8e4df",
           }}
         >
-          <div style={{ fontSize: "13px", color: "#888", marginBottom: "0.25rem" }}>
-            fetched via loader
+          <div
+            style={{ fontSize: "13px", color: "#888", marginBottom: "0.25rem" }}
+          >
+            extracted params
           </div>
-          <div style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.5px" }}>
-            {user.name}
-          </div>
-          <div style={{ fontSize: "14px", color: "#666", marginTop: "2px" }}>
-            {user.email}
+          <div
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              letterSpacing: "-0.5px",
+            }}
+          >
+            {params.id}
           </div>
         </div>
 
         <div style={{ padding: "1.25rem" }}>
-          <div style={{ fontSize: "13px", color: "#888", marginBottom: "0.5rem" }}>
-            loader output
+          <div
+            style={{ fontSize: "13px", color: "#888", marginBottom: "0.5rem" }}
+          >
+            raw object
           </div>
           <pre
             style={{
@@ -65,10 +67,8 @@ export default function UserPage() {
               whiteSpace: "pre-wrap",
             }}
           >
-{`{
-  id: "${user.id}",
-  name: "${user.name}",
-  email: "${user.email}"
+            {`{
+  id: "${params.id}"
 }`}
           </pre>
         </div>
@@ -85,17 +85,18 @@ export default function UserPage() {
         }}
       >
         <div>
-          <span style={{ color: "#888" }}>route pattern:</span> /user/$id
+          <span style={{ color: "#888" }}>route pattern:</span> /showcase/$id
         </div>
         <div>
-          <span style={{ color: "#888" }}>actual URL: </span> /user/{user.id}
+          <span style={{ color: "#888" }}>actual URL: </span> /showcase/
+          {params.id}
         </div>
         <div>
-          <span style={{ color: "#888" }}>loader: </span>{" "}
-          fetchUser(params.id) &rarr; User object
+          <span style={{ color: "#888" }}>hook: </span> useParams&lt;
+          {`{ id: string }`}&gt;()
         </div>
         <div>
-          <span style={{ color: "#888" }}>hook: </span> useLoaderData&lt;User&gt;()
+          <span style={{ color: "#888" }}>loader: </span> none (sync extraction)
         </div>
       </div>
     </div>

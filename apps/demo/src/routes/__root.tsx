@@ -7,6 +7,7 @@ const navLinks = [
   { to: "/navigate", label: "Navigate" },
   { to: "/user/atharv", label: "Atharv" },
   { to: "/user/maithili", label: "Maithili" },
+  { to: "/showcase/michi", label: "useParams" },
   { to: "/dashboard", label: "Dashboard" },
   { to: "/dashboard/analytics", label: "Analytics" },
   { to: "/settings/profile", label: "Profile" },

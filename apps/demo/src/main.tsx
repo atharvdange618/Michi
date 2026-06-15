@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 import { Router, RouterProvider } from "michi";
 import IndexPage from "./routes/index";
 import AboutPage from "./routes/about";
-import UserPage from "./routes/user/$id";
+import UserPage, { loader as userLoader } from "./routes/user/$id";
 import NavigatePage from "./routes/navigate";
 import RootLayout from "./routes/__root";
 import AuthLayout from "./routes/_auth";
@@ -14,6 +14,7 @@ import SettingsLayout from "./routes/settings";
 import ProfilePage from "./routes/settings/profile";
 import BillingPage from "./routes/settings/billing";
 import FilePage from "./routes/files/$wildcard";
+import ParamsShowcasePage from "./routes/showcase/$id";
 
 const router = new Router([
   {
@@ -23,7 +24,8 @@ const router = new Router([
       { path: "/", component: IndexPage },
       { path: "/about", component: AboutPage },
       { path: "/navigate", component: NavigatePage },
-      { path: "/user/$id", component: UserPage },
+      { path: "/user/$id", component: UserPage, loader: userLoader },
+      { path: "/showcase/$id", component: ParamsShowcasePage },
       { path: "/files/*", component: FilePage },
       {
         path: "_auth",

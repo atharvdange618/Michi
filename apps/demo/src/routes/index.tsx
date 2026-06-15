@@ -3,8 +3,14 @@ import { Link } from "michi";
 const features = [
   {
     title: "Dynamic Params",
-    desc: "/user/$id extracts typed params from the URL",
+    desc: "/user/$id fetches data via loader + useLoaderData()",
     to: "/user/atharv",
+    tag: "Slice 4",
+  },
+  {
+    title: "useParams Hook",
+    desc: "/showcase/$id extracts URL params directly - no loader",
+    to: "/showcase/michi",
     tag: "Slice 2",
   },
   {

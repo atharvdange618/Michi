@@ -7,6 +7,7 @@ export default function NavigatePage() {
     { label: "Go Home", path: "/" },
     { label: "Go to About", path: "/about" },
     { label: "Go to /user/michi", path: "/user/michi" },
+    { label: "Go to /showcase/michi", path: "/showcase/michi" },
     { label: "Go to /files/a/b/c", path: "/files/a/b/c" },
     { label: "Go to /settings/profile", path: "/settings/profile" },
   ];
