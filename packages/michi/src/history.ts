@@ -21,16 +21,21 @@ export class History {
   }
 
   push(to: string): void {
+    if (typeof window === "undefined") return;
     window.history.pushState(null, "", to);
     this.notify(); // pushState doesn't fire popstate, we notify manually
   }
 
   replace(to: string): void {
+    if (typeof window === "undefined") return;
     window.history.replaceState(null, "", to);
     this.notify();
   }
 
   getLocation(): ParsedLocation {
+    if (typeof window === "undefined") {
+      return { pathname: "/", search: "", hash: "" };
+    }
     return getLocation();
   }
 

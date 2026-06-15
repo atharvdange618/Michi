@@ -24,3 +24,5 @@ dist/
 /notes
 AGENTS.md
 CONTEXT.md
+.commandcode/
+.mimocode/

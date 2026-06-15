@@ -79,6 +79,7 @@ export function matchTree(
         routeId: route.path,
         params: {},
         loaderData: undefined,
+        loader: route.loader,
         component: route.component,
       };
 
@@ -106,7 +107,7 @@ export function matchTree(
     //   - Child "/dashboard" matches → parent becomes layout → returns [{/dashboard-layout}, {/dashboard-home}]
     //
     // This means the same route path can produce different match chains depending
-    // on whether children exist and match. This is by design — it enables index
+    // on whether children exist and match. This is by design - it enables index
     // routes where the parent is both a layout and has a default child page.
     if (route.children?.length) {
       const childMatches = matchTree(route.children, pathname);
@@ -115,6 +116,7 @@ export function matchTree(
           routeId: route.path,
           params: {},
           loaderData: undefined,
+          loader: route.loader,
           component: route.component,
         };
         return [layoutMatch, ...childMatches];
@@ -129,6 +131,7 @@ export function matchTree(
           routeId: route.path,
           params,
           loaderData: undefined,
+          loader: route.loader,
           component: route.component,
         },
       ];
