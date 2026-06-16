@@ -3,10 +3,8 @@ import type { RouteMatch, LoaderContext } from "./types";
 function hasChanged(prev: RouteMatch | undefined, next: RouteMatch): boolean {
   if (!prev) return true;
   if (prev.routeId !== next.routeId) return true;
-  const prevKeys = Object.keys(prev.params);
-  const nextKeys = Object.keys(next.params);
-  if (prevKeys.length !== nextKeys.length) return true;
-  return prevKeys.some((k) => prev.params[k] !== next.params[k]);
+  if (JSON.stringify(prev.params) !== JSON.stringify(next.params)) return true;
+  return false;
 }
 
 export async function runLoaders(
@@ -25,7 +23,7 @@ export async function runLoaders(
 
       const ctx: LoaderContext = {
         params: match.params,
-        search: {},
+        search: {}, // TODO: Slice 7 - parse from location.search using validateSearch
       };
 
       const loaderData = await match.loader(ctx);
