@@ -41,10 +41,19 @@ export function useParams<
   T extends Record<string, string> = Record<string, string>,
 >(): T {
   const state = useRouterState();
-  const params = state.matches.reduce(
-    (acc, match) => ({ ...acc, ...match.params }),
-    {} as Record<string, string>,
-  );
+  const params: Record<string, string> = {};
+  for (const match of state.matches) {
+    for (const [key, value] of Object.entries(match.params)) {
+      if (key in params && params[key] !== value) {
+        console.warn(
+          `useParams(): param "${key}" is defined by multiple routes. ` +
+            `Value "${params[key]}" was overridden by "${value}". ` +
+            `Consider renaming the param in your route patterns to avoid ambiguity.`,
+        );
+      }
+      params[key] = value;
+    }
+  }
   return params as T;
 }
 
@@ -83,6 +92,7 @@ export function RouterProvider({
       {state.status === "loading" && !rootMatch ? (
         loadingComponent
       ) : state.status === "error" && !rootMatch ? (
+        // TODO: Slice 5 - render errorComponent per-route instead of NotFound
         <NotFound />
       ) : rootMatch ? (
         <OutletContext.Provider value={1}>
