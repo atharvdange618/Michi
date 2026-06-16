@@ -17,7 +17,7 @@ export type LoaderContext<
 export type RouteDefinition = {
   path: string;
   component: ComponentType;
-  loader?: (ctx: LoaderContext) => Promise<unknown>;
+  loader?: (ctx: LoaderContext<any, any>) => Promise<unknown>;
   children?: RouteDefinition[];
 };
 
