@@ -47,27 +47,59 @@ export class Router {
   private async handleLocationChange(location: ParsedLocation): Promise<void> {
     const navId = ++this.navigationId;
     const pendingMatches = this.match(location.pathname);
-
     this.previousMatches = this.state.matches;
-    this.state = {
-      location,
-      matches: [],
-      status: "loading",
-    };
-    this.notify();
 
-    await this.commitNavigation(location, pendingMatches, navId);
+    const pendingMs = 1000;
+    const pendingMinMs = 500;
+    const pendingInfo = { fired: false, at: 0 };
+
+    const pendingTimer = setTimeout(() => {
+      if (navId !== this.navigationId) return;
+      pendingInfo.fired = true;
+      pendingInfo.at = Date.now();
+      this.state = { ...this.state, location, status: "loading" };
+      this.notify();
+    }, pendingMs);
+
+    await this.commitNavigation(
+      location,
+      pendingMatches,
+      navId,
+      {
+        timer: pendingTimer,
+        info: pendingInfo,
+        minDisplayMs: pendingMinMs,
+      },
+    );
   }
 
   private async commitNavigation(
     location: ParsedLocation,
     pendingMatches: RouteMatch[],
     navId: number,
+    pending?: {
+      timer: ReturnType<typeof setTimeout>;
+      info: { fired: boolean; at: number };
+      minDisplayMs: number;
+    },
   ): Promise<void> {
     try {
-      const resolvedMatches = await runLoaders(pendingMatches, this.previousMatches);
+      const resolvedMatches = await runLoaders(
+        pendingMatches,
+        this.previousMatches,
+      );
+      clearTimeout(pending?.timer);
 
       if (navId !== this.navigationId) return;
+
+      if (pending?.info.fired) {
+        const elapsed = Date.now() - pending.info.at;
+        const remaining = pending.minDisplayMs - elapsed;
+        if (remaining > 0) {
+          await new Promise((r) => setTimeout(r, remaining));
+        }
+        if (navId !== this.navigationId) return;
+      }
 
       this.state = {
         location,
@@ -75,6 +107,7 @@ export class Router {
         status: "idle",
       };
     } catch (error) {
+      clearTimeout(pending?.timer);
       if (navId !== this.navigationId) return;
 
       this.state = {
@@ -109,6 +142,12 @@ export class Router {
   }
 
   private notify(): void {
-    this.listeners.forEach((l) => l());
+    this.listeners.forEach((l) => {
+      try {
+        l();
+      } catch (e) {
+        console.error("Router listener threw:", e);
+      }
+    });
   }
 }

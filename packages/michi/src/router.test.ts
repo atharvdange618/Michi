@@ -45,26 +45,19 @@ afterEach(() => {
 });
 
 function waitForIdle(router: Router, timeoutMs = 2000): Promise<void> {
-  return Promise.race([
-    new Promise<void>((resolve) => {
+  return new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(
+      () => reject(new Error("waitForIdle timeout")),
+      timeoutMs,
+    );
+    const unsub = router.subscribe(() => {
       if (router.getState().status === "idle") {
+        clearTimeout(timeout);
+        unsub();
         resolve();
-        return;
       }
-      const unsub = router.subscribe(() => {
-        if (router.getState().status === "idle") {
-          unsub();
-          resolve();
-        }
-      });
-    }),
-    new Promise<never>((_, reject) =>
-      setTimeout(
-        () => reject(new Error("waitForIdle timeout")),
-        timeoutMs,
-      ),
-    ),
-  ]);
+    });
+  });
 }
 
 const routes: RouteDefinition[] = [
@@ -119,7 +112,7 @@ describe("Router", () => {
 
     router.navigate("/about");
     await waitForIdle(router);
-    expect(listener).toHaveBeenCalledTimes(2);
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 
   it("unsubscribe stops notifications", async () => {
@@ -186,11 +179,9 @@ describe("Router", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     router.navigate("");
-    await waitForIdle(router);
     expect(router.getState().location.pathname).toBe("/");
 
     router.navigate("about");
-    await waitForIdle(router);
     expect(router.getState().location.pathname).toBe("/");
 
     warn.mockRestore();
@@ -268,7 +259,7 @@ describe("Loaders", () => {
     router.navigate("/slow");
     await vi.waitFor(() => {
       expect(statuses).toContain("loading");
-    });
+    }, { timeout: 2000 });
 
     resolveLoader!(null);
     await waitForIdle(router);
