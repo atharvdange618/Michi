@@ -112,9 +112,16 @@ export class Router {
 
       this.state = {
         location,
-        matches: [],
-        status: "error",
-        error,
+        matches: [
+          {
+            routeId: "__root",
+            params: {},
+            loaderData: undefined,
+            component: () => null,
+            error,
+          },
+        ],
+        status: "idle",
       };
     }
     this.notify();
