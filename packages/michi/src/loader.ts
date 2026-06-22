@@ -15,20 +15,24 @@ export async function runLoaders(
     pendingMatches.map(async (match, index) => {
       const prev = previousMatches[index];
 
-      if (!hasChanged(prev, match)) {
-        return { ...match, loaderData: prev!.loaderData };
+      if (!hasChanged(prev, match) && !prev!.error) {
+        return { ...match, loaderData: prev!.loaderData, error: undefined };
       }
 
-      if (!match.loader) return match;
+      if (!match.loader) return { ...match, error: undefined };
 
-      const ctx: LoaderContext = {
-        params: match.params,
-        search: {}, // TODO: Slice 7 - parse from location.search using validateSearch
-      };
+      try {
+        const ctx: LoaderContext = {
+          params: match.params,
+          search: {}, // TODO: Slice 7 - parse from location.search using validateSearch
+        };
 
-      const loaderData = await match.loader(ctx);
+        const loaderData = await match.loader(ctx);
 
-      return { ...match, loaderData };
+        return { ...match, loaderData, error: undefined };
+      } catch (error) {
+        return { ...match, loaderData: undefined, error };
+      }
     }),
   );
 }
