@@ -1,18 +1,18 @@
 import React, {
   Component,
+  type ComponentType,
   type ErrorInfo,
   type ReactNode,
-  type ComponentType,
   createContext,
   useCallback,
   useContext,
   useSyncExternalStore,
 } from "react";
-import type { Router } from "./router";
-import type { RouterState, RouteMatch } from "./types";
-import { NotFound } from "./components/not-found";
 import { Loading } from "./components/loading";
+import { NotFound } from "./components/not-found";
 import { RouteError as DefaultRouteError } from "./components/route-error";
+import type { RouteMatch, RouterState } from "./types";
+import type { Router } from "./router";
 
 const RouterContext = createContext<Router | null>(null);
 

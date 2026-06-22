@@ -4,7 +4,7 @@ import { useRouter } from "../react";
 // NOTE: NotFound uses useRouter() to navigate home on button click.
 // This means it MUST be rendered inside a <RouterProvider>.
 // It is always safe to use as the default Outlet fallback or as the
-// top-level 404 in RouterProvider, since both are within the provider tree.
+// Top-level 404 in RouterProvider, since both are within the provider tree.
 // Do not render <NotFound /> outside a RouterProvider.
 
 const BROKEN_PATHS = ["this/page", "the/way", "anywhere", "something", "hope", "a/destination"];

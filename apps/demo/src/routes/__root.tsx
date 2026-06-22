@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
 import { Link, Outlet } from "michi";
+import type { CSSProperties } from "react";
 import { Footer } from "../components/footer";
 
 const navSections = [

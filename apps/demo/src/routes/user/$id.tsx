@@ -1,5 +1,5 @@
-import { useLoaderData, type LoaderContext } from "michi";
-import { fetchUser, type User } from "../../mocks/api";
+import { type LoaderContext, useLoaderData } from "michi";
+import { type User, fetchUser } from "../../mocks/api";
 
 export async function loader({ params }: LoaderContext<{ id: string }>) {
   return fetchUser(params.id);

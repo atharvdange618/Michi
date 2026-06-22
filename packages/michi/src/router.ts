@@ -1,7 +1,7 @@
 import { History } from "./history";
 import { matchTree } from "./matcher";
 import { runLoaders } from "./loader";
-import type { RouteDefinition, RouterState, RouteMatch, ParsedLocation } from "./types";
+import type { ParsedLocation, RouteDefinition, RouteMatch, RouterState } from "./types";
 
 export class Router {
   private history: History;

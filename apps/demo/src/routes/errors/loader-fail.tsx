@@ -1,5 +1,5 @@
-import type { CSSProperties } from "react";
 import { Link, type LoaderContext } from "michi";
+import type { CSSProperties } from "react";
 
 const errorBadgeStyle: CSSProperties = {
   display: "inline-flex",

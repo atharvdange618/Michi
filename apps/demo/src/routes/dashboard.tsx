@@ -1,5 +1,5 @@
+import { Link, Outlet } from "michi";
 import type { CSSProperties } from "react";
-import { Outlet, Link } from "michi";
 
 const links = [
   { to: "/dashboard", label: "Overview" },

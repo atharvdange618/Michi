@@ -1,4 +1,4 @@
-import type { RouteMatch, LoaderContext } from "./types";
+import type { LoaderContext, RouteMatch } from "./types";
 
 function hasChanged(prev: RouteMatch | undefined, next: RouteMatch): boolean {
   if (!prev) return true;
