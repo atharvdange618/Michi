@@ -26,17 +26,13 @@ const RouteErrorContext = createContext<unknown>(NO_ERROR);
 
 export function useRouter(): Router {
   const router = useContext(RouterContext);
-  if (!router)
-    throw new Error("useRouter must be used inside <RouterProvider>");
+  if (!router) throw new Error("useRouter must be used inside <RouterProvider>");
   return router;
 }
 
 export function useRouterState(): RouterState {
   const router = useRouter();
-  const subscribe = useCallback(
-    (cb: () => void) => router.subscribe(cb),
-    [router],
-  );
+  const subscribe = useCallback((cb: () => void) => router.subscribe(cb), [router]);
   return useSyncExternalStore(
     subscribe,
     () => router.getState(),
@@ -44,9 +40,7 @@ export function useRouterState(): RouterState {
   );
 }
 
-export function useParams<
-  T extends Record<string, string> = Record<string, string>,
->(): T {
+export function useParams<T extends Record<string, string> = Record<string, string>>(): T {
   const state = useRouterState();
   const params: Record<string, string> = {};
   for (const match of state.matches) {
@@ -100,10 +94,7 @@ type RouteErrorBoundaryState = {
   renderError: unknown;
 };
 
-class RouteErrorBoundary extends Component<
-  RouteErrorBoundaryProps,
-  RouteErrorBoundaryState
-> {
+class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBoundaryState> {
   state: RouteErrorBoundaryState = { renderError: undefined };
 
   static getDerivedStateFromError(error: unknown): RouteErrorBoundaryState {
@@ -134,19 +125,10 @@ class RouteErrorBoundary extends Component<
   }
 }
 
-export function RouterProvider({
-  router,
-  loading,
-}: {
-  router: Router;
-  loading?: ReactNode;
-}) {
+export function RouterProvider({ router, loading }: { router: Router; loading?: ReactNode }) {
   // useState + useEffect would work but has a subscription gap and tears in
   // concurrent mode. useSyncExternalStore was built exactly for external stores.
-  const subscribe = useCallback(
-    (cb: () => void) => router.subscribe(cb),
-    [router],
-  );
+  const subscribe = useCallback((cb: () => void) => router.subscribe(cb), [router]);
   const state = useSyncExternalStore(
     subscribe,
     () => router.getState(),
@@ -177,11 +159,7 @@ export function RouterProvider({
   );
 }
 
-export function Outlet({
-  fallback = <NotFound />,
-}: {
-  fallback?: React.ReactNode;
-}) {
+export function Outlet({ fallback = <NotFound /> }: { fallback?: React.ReactNode }) {
   const matchIndex = useContext(OutletContext);
   const state = useRouterState();
   const match = state.matches[matchIndex];

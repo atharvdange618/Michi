@@ -29,9 +29,9 @@ export default function UserPage() {
           maxWidth: "50ch",
         }}
       >
-        This page uses a <code>loader</code> + <code>useLoaderData()</code> to
-        fetch user data before rendering. The loader runs during navigation, and
-        the component receives the resolved data.
+        This page uses a <code>loader</code> + <code>useLoaderData()</code> to fetch user data
+        before rendering. The loader runs during navigation, and the component receives the resolved
+        data.
       </p>
 
       <div
@@ -126,20 +126,18 @@ export default function UserPage() {
         }}
       >
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>route pattern:</span>{" "}
-          /user/$id
+          <span style={{ color: "var(--ink-faint)" }}>route pattern:</span> /user/$id
         </div>
         <div>
           <span style={{ color: "var(--ink-faint)" }}>actual URL: </span> /user/
           {user.id}
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>loader: </span>{" "}
-          fetchUser(params.id) &rarr; User object
+          <span style={{ color: "var(--ink-faint)" }}>loader: </span> fetchUser(params.id) &rarr;
+          User object
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>hook: </span>{" "}
-          useLoaderData&lt;User&gt;()
+          <span style={{ color: "var(--ink-faint)" }}>hook: </span> useLoaderData&lt;User&gt;()
         </div>
       </div>
     </div>

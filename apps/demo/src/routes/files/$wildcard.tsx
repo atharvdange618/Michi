@@ -79,17 +79,14 @@ export default function FilePage() {
           maxWidth: "50ch",
         }}
       >
-        This route uses a <code>*</code> wildcard - it matches any path under{" "}
-        <code>/files/</code>, no matter how deep.
+        This route uses a <code>*</code> wildcard - it matches any path under <code>/files/</code>,
+        no matter how deep.
       </p>
 
       <div style={breadcrumbBarStyle}>
         <span style={filePathTagStyle}>/files</span>
         {segments.map((seg, i) => (
-          <span
-            key={seg}
-            style={{ display: "flex", alignItems: "center", gap: "6px" }}
-          >
+          <span key={seg} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span
               style={{
                 color: "var(--ink-faint)",
@@ -102,12 +99,8 @@ export default function FilePage() {
             <span
               style={{
                 ...segmentTagBaseStyle,
-                background:
-                  i === segments.length - 1
-                    ? "var(--bg-inset)"
-                    : "var(--bg-raised)",
-                color:
-                  i === segments.length - 1 ? "var(--ink)" : "var(--ink-muted)",
+                background: i === segments.length - 1 ? "var(--bg-inset)" : "var(--bg-raised)",
+                color: i === segments.length - 1 ? "var(--ink)" : "var(--ink-muted)",
                 fontWeight: i === segments.length - 1 ? 600 : 400,
               }}
             >
@@ -144,8 +137,7 @@ export default function FilePage() {
                 width: "24px",
                 height: "6px",
                 borderRadius: "3px",
-                background:
-                  i < segments.length ? "var(--accent)" : "var(--border)",
+                background: i < segments.length ? "var(--accent)" : "var(--border)",
                 transition: "background 150ms ease",
               }}
             />
@@ -202,36 +194,29 @@ export default function FilePage() {
         }}
       >
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>route pattern:</span>{" "}
-          /files/*
+          <span style={{ color: "var(--ink-faint)" }}>route pattern:</span> /files/*
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>actual URL: </span>{" "}
-          /files/{filePath}
+          <span style={{ color: "var(--ink-faint)" }}>actual URL: </span> /files/{filePath}
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>wildcard key: </span> "*"
-          (catches everything after /files/)
+          <span style={{ color: "var(--ink-faint)" }}>wildcard key: </span> "*" (catches everything
+          after /files/)
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>hook: </span>{" "}
-          useParams&lt;{`{ "*": string }`}&gt;()
+          <span style={{ color: "var(--ink-faint)" }}>hook: </span> useParams&lt;{`{ "*": string }`}
+          &gt;()
         </div>
       </div>
 
       <div style={infoBoxStyle}>
         <strong>How wildcard matching works:</strong> The{" "}
-        <code style={{ background: "rgba(74, 222, 128, 0.12)" }}>*</code> in the
-        route pattern converts to a regex that captures everything after{" "}
-        <code style={{ background: "rgba(74, 222, 128, 0.12)" }}>/files/</code>.
-        Unlike dynamic params (
-        <code style={{ background: "rgba(74, 222, 128, 0.12)" }}>$id</code>)
-        which match a single segment, wildcards match across multiple segments -
-        so{" "}
-        <code style={{ background: "rgba(74, 222, 128, 0.12)" }}>
-          /files/a/b/c
-        </code>{" "}
-        and{" "}
+        <code style={{ background: "rgba(74, 222, 128, 0.12)" }}>*</code> in the route pattern
+        converts to a regex that captures everything after{" "}
+        <code style={{ background: "rgba(74, 222, 128, 0.12)" }}>/files/</code>. Unlike dynamic
+        params (<code style={{ background: "rgba(74, 222, 128, 0.12)" }}>$id</code>) which match a
+        single segment, wildcards match across multiple segments - so{" "}
+        <code style={{ background: "rgba(74, 222, 128, 0.12)" }}>/files/a/b/c</code> and{" "}
         <code style={{ background: "rgba(74, 222, 128, 0.12)" }}>
           /files/public/uploads/report.pdf
         </code>{" "}

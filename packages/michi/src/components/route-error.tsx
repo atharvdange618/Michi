@@ -13,9 +13,7 @@ export function RouteError({ error }: { error: unknown }) {
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
-      <h2 style={{ margin: "0 0 0.5rem", color: "#ff4d4d" }}>
-        Something broke
-      </h2>
+      <h2 style={{ margin: "0 0 0.5rem", color: "#ff4d4d" }}>Something broke</h2>
 
       <p
         style={{

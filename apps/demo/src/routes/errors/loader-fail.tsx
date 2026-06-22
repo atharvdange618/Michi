@@ -60,9 +60,8 @@ function LoaderFailError({ error }: { error: unknown }) {
           maxWidth: "50ch",
         }}
       >
-        The route's loader failed before the component could render. The{" "}
-        <code>errorComponent</code> receives the error and renders this UI
-        instead.
+        The route's loader failed before the component could render. The <code>errorComponent</code>{" "}
+        receives the error and renders this UI instead.
       </p>
 
       <div
@@ -101,13 +100,12 @@ function LoaderFailError({ error }: { error: unknown }) {
           lineHeight: 1.6,
         }}
       >
-        Navigate away, then come back - the loader re-runs from scratch. If it
-        fails again, the error component renders again.
+        Navigate away, then come back - the loader re-runs from scratch. If it fails again, the
+        error component renders again.
         <br />
         <br />
-        <strong>Tip:</strong> Open your browser's DevTools console to see the
-        full error with stack trace - Michi logs loader errors there
-        automatically.
+        <strong>Tip:</strong> Open your browser's DevTools console to see the full error with stack
+        trace - Michi logs loader errors there automatically.
       </div>
 
       <div style={{ marginTop: "1.5rem" }}>

@@ -19,9 +19,7 @@ import LoaderFailPage, {
   loader as loaderFailLoader,
   errorComponent as loaderFailError,
 } from "./routes/errors/loader-fail";
-import RenderFailPage, {
-  errorComponent as renderFailError,
-} from "./routes/errors/render-fail";
+import RenderFailPage, { errorComponent as renderFailError } from "./routes/errors/render-fail";
 
 const router = new Router([
   {

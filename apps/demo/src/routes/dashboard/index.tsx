@@ -33,19 +33,17 @@ export default function DashboardHome() {
         <strong>What's happening here:</strong>
         <br />
         The URL is <code style={codeStyle}>/dashboard</code>. Michi matched{" "}
-        <code style={codeStyle}>dashboard.tsx</code> as a layout route - it
-        renders the sidebar + <code style={codeStyle}>&lt;Outlet /&gt;</code>.
-        Then it matched <code style={codeStyle}>dashboard/index.tsx</code> as
-        the child, which renders inside that Outlet.
+        <code style={codeStyle}>dashboard.tsx</code> as a layout route - it renders the sidebar +{" "}
+        <code style={codeStyle}>&lt;Outlet /&gt;</code>. Then it matched{" "}
+        <code style={codeStyle}>dashboard/index.tsx</code> as the child, which renders inside that
+        Outlet.
         <br />
         <br />
         <strong>Route tree:</strong> <code style={codeStyle}>__root</code> →{" "}
-        <code style={codeStyle}>_auth</code> →{" "}
-        <code style={codeStyle}>dashboard</code> →{" "}
+        <code style={codeStyle}>_auth</code> → <code style={codeStyle}>dashboard</code> →{" "}
         <code style={codeStyle}>dashboard/index</code>
         <br />
-        The sidebar stays mounted when you navigate to Analytics - only the
-        Outlet content swaps.
+        The sidebar stays mounted when you navigate to Analytics - only the Outlet content swaps.
       </div>
     </div>
   );

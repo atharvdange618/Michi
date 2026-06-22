@@ -32,26 +32,24 @@ export default function AnalyticsPage() {
       <div style={calloutStyle}>
         <strong>What's happening here:</strong>
         <br />
-        The URL is <code style={codeStyle}>/dashboard/analytics</code>. Michi
-        walked the route tree and found 4 matches:
+        The URL is <code style={codeStyle}>/dashboard/analytics</code>. Michi walked the route tree
+        and found 4 matches:
         <br />
         <br />
         <code style={codeStyle}>__root</code> (always matches) →{" "}
         <code style={codeStyle}>_auth</code> (pathless layout, no URL segment) →{" "}
-        <code style={codeStyle}>dashboard</code> (matches{" "}
-        <code style={codeStyle}>/dashboard</code>) →{" "}
-        <code style={codeStyle}>dashboard/analytics</code> (matches{" "}
+        <code style={codeStyle}>dashboard</code> (matches <code style={codeStyle}>/dashboard</code>)
+        → <code style={codeStyle}>dashboard/analytics</code> (matches{" "}
         <code style={codeStyle}>/analytics</code> under parent)
         <br />
         <br />
         <strong>Key concept:</strong> <code style={codeStyle}>_auth</code> is a{" "}
-        <em>pathless layout</em> - its filename prefix{" "}
-        <code style={codeStyle}>_</code> tells Michi it adds no URL segment. It
-        wraps children without affecting the URL.
+        <em>pathless layout</em> - its filename prefix <code style={codeStyle}>_</code> tells Michi
+        it adds no URL segment. It wraps children without affecting the URL.
         <br />
         <br />
-        <strong>Outlet chain:</strong> root renders Outlet → auth renders Outlet
-        → dashboard renders Outlet → analytics renders (leaf, no Outlet).
+        <strong>Outlet chain:</strong> root renders Outlet → auth renders Outlet → dashboard renders
+        Outlet → analytics renders (leaf, no Outlet).
       </div>
     </div>
   );

@@ -24,9 +24,8 @@ export default function ParamsShowcasePage() {
           maxWidth: "50ch",
         }}
       >
-        This page uses <code>useParams()</code> to read dynamic segments
-        directly from the URL - no loader needed. The hook merges params from
-        all matched routes in the tree.
+        This page uses <code>useParams()</code> to read dynamic segments directly from the URL - no
+        loader needed. The hook merges params from all matched routes in the tree.
       </p>
 
       <div
@@ -110,20 +109,17 @@ export default function ParamsShowcasePage() {
         }}
       >
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>route pattern:</span>{" "}
-          /showcase/$id
+          <span style={{ color: "var(--ink-faint)" }}>route pattern:</span> /showcase/$id
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>actual URL: </span>{" "}
-          /showcase/{params.id}
+          <span style={{ color: "var(--ink-faint)" }}>actual URL: </span> /showcase/{params.id}
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>hook: </span>{" "}
-          useParams&lt;{`{ id: string }`}&gt;()
+          <span style={{ color: "var(--ink-faint)" }}>hook: </span> useParams&lt;{`{ id: string }`}
+          &gt;()
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>loader: </span> none (sync
-          extraction)
+          <span style={{ color: "var(--ink-faint)" }}>loader: </span> none (sync extraction)
         </div>
       </div>
     </div>

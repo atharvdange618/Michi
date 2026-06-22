@@ -1,12 +1,7 @@
 import { History } from "./history";
 import { matchTree } from "./matcher";
 import { runLoaders } from "./loader";
-import type {
-  RouteDefinition,
-  RouterState,
-  RouteMatch,
-  ParsedLocation,
-} from "./types";
+import type { RouteDefinition, RouterState, RouteMatch, ParsedLocation } from "./types";
 
 export class Router {
   private history: History;
@@ -29,15 +24,9 @@ export class Router {
       status: "loading",
     };
 
-    void this.commitNavigation(
-      initialLocation,
-      initialMatches,
-      ++this.navigationId,
-    );
+    void this.commitNavigation(initialLocation, initialMatches, ++this.navigationId);
 
-    this.history.subscribe(
-      (location) => void this.handleLocationChange(location),
-    );
+    this.history.subscribe((location) => void this.handleLocationChange(location));
   }
 
   private match(pathname: string): RouteMatch[] {
@@ -79,10 +68,7 @@ export class Router {
     },
   ): Promise<void> {
     try {
-      const resolvedMatches = await runLoaders(
-        pendingMatches,
-        this.previousMatches,
-      );
+      const resolvedMatches = await runLoaders(pendingMatches, this.previousMatches);
       clearTimeout(pending?.timer);
 
       if (navId !== this.navigationId) return;

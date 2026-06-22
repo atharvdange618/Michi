@@ -50,8 +50,8 @@ export default function NavigatePage() {
           maxWidth: "50ch",
         }}
       >
-        This page uses <code>useRouter()</code> to navigate via button clicks -
-        no <code>&lt;Link&gt;</code> needed.
+        This page uses <code>useRouter()</code> to navigate via button clicks - no{" "}
+        <code>&lt;Link&gt;</code> needed.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         {routes.map((r) => (
@@ -63,8 +63,7 @@ export default function NavigatePage() {
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = "var(--accent)";
               e.currentTarget.style.transform = "translateY(-1px)";
-              e.currentTarget.style.boxShadow =
-                "0 1px 3px rgba(194, 120, 50, 0.08)";
+              e.currentTarget.style.boxShadow = "0 1px 3px rgba(194, 120, 50, 0.08)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.borderColor = "var(--border-subtle)";

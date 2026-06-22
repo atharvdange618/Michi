@@ -1,12 +1,6 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { useMemo } from "react";
-import {
-  render,
-  screen,
-  fireEvent,
-  cleanup,
-  waitFor,
-} from "@testing-library/react";
+import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import { Router } from "./router";
 import {
   RouterProvider,
@@ -30,9 +24,7 @@ function resetMockPathname() {
 }
 
 const MockHistory = vi.hoisted(() => {
-  const listeners = new Set<
-    (loc: { pathname: string; search: string; hash: string }) => void
-  >();
+  const listeners = new Set<(loc: { pathname: string; search: string; hash: string }) => void>();
   return class MockHistory {
     push(to: string) {
       mockPathname = to;
@@ -42,9 +34,7 @@ const MockHistory = vi.hoisted(() => {
     getLocation() {
       return { pathname: mockPathname, search: "", hash: "" };
     }
-    subscribe(
-      cb: (loc: { pathname: string; search: string; hash: string }) => void,
-    ) {
+    subscribe(cb: (loc: { pathname: string; search: string; hash: string }) => void) {
       listeners.add(cb);
       return () => {
         listeners.delete(cb);
@@ -62,11 +52,7 @@ afterEach(() => {
   cleanup();
 });
 
-function TestRouter({
-  routes,
-}: {
-  routes: import("./types").RouteDefinition[];
-}) {
+function TestRouter({ routes }: { routes: import("./types").RouteDefinition[] }) {
   const router = useMemo(() => new Router(routes), []);
   return <RouterProvider router={router} />;
 }
@@ -78,9 +64,7 @@ describe("useRouter", () => {
       useRouter();
       return null;
     }
-    expect(() => render(<Bad />)).toThrow(
-      "useRouter must be used inside <RouterProvider>",
-    );
+    expect(() => render(<Bad />)).toThrow("useRouter must be used inside <RouterProvider>");
     spy.mockRestore();
   });
 });
@@ -499,9 +483,7 @@ describe("useLoaderData", () => {
         path: "__root",
         component: RootPage,
         loader: rootLoader,
-        children: [
-          { path: "/page", component: ChildPage, loader: childLoader },
-        ],
+        children: [{ path: "/page", component: ChildPage, loader: childLoader }],
       },
     ];
 

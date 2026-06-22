@@ -55,8 +55,8 @@ function RenderFailError({ error }: { error: unknown }) {
           maxWidth: "50ch",
         }}
       >
-        The route's component threw during render. React's error boundary caught
-        it and rendered this <code>errorComponent</code> instead.
+        The route's component threw during render. React's error boundary caught it and rendered
+        this <code>errorComponent</code> instead.
       </p>
 
       <div
@@ -95,13 +95,12 @@ function RenderFailError({ error }: { error: unknown }) {
           lineHeight: 1.6,
         }}
       >
-        Unlike loader errors (which happen before render), this error comes from
-        the component itself. The error boundary at the route level catches it
-        and swaps in the error UI.
+        Unlike loader errors (which happen before render), this error comes from the component
+        itself. The error boundary at the route level catches it and swaps in the error UI.
         <br />
         <br />
-        <strong>Tip:</strong> Open your browser's DevTools console to see the
-        full error with stack trace - React logs it there automatically.
+        <strong>Tip:</strong> Open your browser's DevTools console to see the full error with stack
+        trace - React logs it there automatically.
       </div>
 
       <div style={{ marginTop: "1.5rem" }}>

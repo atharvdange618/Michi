@@ -129,9 +129,7 @@ describe("matchTree", () => {
   });
 
   it("returns empty array when no routes match", () => {
-    const routes: RouteDefinition[] = [
-      { path: "/about", component: () => null },
-    ];
+    const routes: RouteDefinition[] = [{ path: "/about", component: () => null }];
 
     const matches = matchTree(routes, "/nonexistent");
     expect(matches).toHaveLength(0);

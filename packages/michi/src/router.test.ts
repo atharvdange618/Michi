@@ -13,9 +13,7 @@ function resetMockPathname() {
 }
 
 const MockHistory = vi.hoisted(() => {
-  const listeners = new Set<
-    (loc: { pathname: string; search: string; hash: string }) => void
-  >();
+  const listeners = new Set<(loc: { pathname: string; search: string; hash: string }) => void>();
   return class MockHistory {
     push(to: string) {
       mockPathname = to;
@@ -25,9 +23,7 @@ const MockHistory = vi.hoisted(() => {
     getLocation() {
       return { pathname: mockPathname, search: "", hash: "" };
     }
-    subscribe(
-      cb: (loc: { pathname: string; search: string; hash: string }) => void,
-    ) {
+    subscribe(cb: (loc: { pathname: string; search: string; hash: string }) => void) {
       listeners.add(cb);
       return () => {
         listeners.delete(cb);
@@ -46,10 +42,7 @@ afterEach(() => {
 
 function waitForIdle(router: Router, timeoutMs = 2000): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error("waitForIdle timeout")),
-      timeoutMs,
-    );
+    const timeout = setTimeout(() => reject(new Error("waitForIdle timeout")), timeoutMs);
     const unsub = router.subscribe(() => {
       if (router.getState().status === "idle") {
         clearTimeout(timeout);
@@ -224,9 +217,7 @@ describe("Loaders", () => {
     router.navigate("/user/atharv");
     await waitForIdle(router);
 
-    expect(loader).toHaveBeenCalledWith(
-      expect.objectContaining({ params: { id: "atharv" } }),
-    );
+    expect(loader).toHaveBeenCalledWith(expect.objectContaining({ params: { id: "atharv" } }));
   });
 
   it("sets status to loading then idle on navigation", async () => {
@@ -333,21 +324,14 @@ describe("Loaders", () => {
         path: "__root",
         component: () => null,
         loader: rootLoader,
-        children: [
-          { path: "/page", component: () => null, loader: childLoader },
-        ],
+        children: [{ path: "/page", component: () => null, loader: childLoader }],
       },
     ];
 
     const router = new Router(routesWithLoaders);
     await waitForIdle(router);
 
-    expect(callOrder).toEqual([
-      "root-start",
-      "child-start",
-      "root-end",
-      "child-end",
-    ]);
+    expect(callOrder).toEqual(["root-start", "child-start", "root-end", "child-end"]);
     expect(router.getState().matches[0].loaderData).toBe("root-data");
     expect(router.getState().matches[1].loaderData).toBe("child-data");
   });
@@ -386,9 +370,7 @@ describe("Loaders", () => {
         path: "__root",
         component: () => null,
         loader: rootLoader,
-        children: [
-          { path: "/user/$id", component: () => null, loader: childLoader },
-        ],
+        children: [{ path: "/user/$id", component: () => null, loader: childLoader }],
       },
     ];
 

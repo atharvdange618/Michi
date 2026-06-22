@@ -47,10 +47,7 @@ function compile(pattern: string): CompiledPattern {
   return result;
 }
 
-export function matchRoute(
-  pattern: string,
-  path: string,
-): Record<string, string> | null {
+export function matchRoute(pattern: string, path: string): Record<string, string> | null {
   const { regex, paramNames } = compile(pattern);
   const match = path.match(regex);
 
@@ -68,10 +65,7 @@ export function matchRoute(
 
 // walks the route tree and returns the matched branch as a flat array.
 // matches[0] is always the root layout, matches[1] is the matched child, etc.
-export function matchTree(
-  routes: RouteDefinition[],
-  pathname: string,
-): RouteMatch[] {
+export function matchTree(routes: RouteDefinition[], pathname: string): RouteMatch[] {
   for (const route of routes) {
     // layout routes always match and wrap their children
     if (isLayoutRoute(route.path)) {

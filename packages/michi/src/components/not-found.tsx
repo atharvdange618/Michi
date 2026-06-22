@@ -7,14 +7,7 @@ import { useRouter } from "../react";
 // top-level 404 in RouterProvider, since both are within the provider tree.
 // Do not render <NotFound /> outside a RouterProvider.
 
-const BROKEN_PATHS = [
-  "this/page",
-  "the/way",
-  "anywhere",
-  "something",
-  "hope",
-  "a/destination",
-];
+const BROKEN_PATHS = ["this/page", "the/way", "anywhere", "something", "hope", "a/destination"];
 
 const containerStyle: React.CSSProperties = {
   minHeight: "100vh",

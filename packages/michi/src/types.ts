@@ -6,10 +6,7 @@ export type ParsedLocation = {
   hash: string;
 };
 
-export type LoaderContext<
-  TParams = Record<string, string>,
-  TSearch = Record<string, string>,
-> = {
+export type LoaderContext<TParams = Record<string, string>, TSearch = Record<string, string>> = {
   params: TParams;
   search: TSearch;
 };
