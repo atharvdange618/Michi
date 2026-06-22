@@ -1,3 +1,5 @@
+import { useSEO } from "../../components/use-seo";
+
 const calloutStyle: React.CSSProperties = {
   background: "var(--green-soft)",
   border: "1px solid var(--green-border)",
@@ -17,6 +19,12 @@ const codeStyle: React.CSSProperties = {
 };
 
 export default function AnalyticsPage() {
+  useSEO({
+    title: "Analytics",
+    description:
+      "Analytics dashboard page - nested child route within the dashboard layout using Outlet pattern.",
+    path: "/dashboard/analytics",
+  });
   return (
     <div>
       <h2

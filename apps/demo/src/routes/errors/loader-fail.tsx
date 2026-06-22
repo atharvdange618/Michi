@@ -1,5 +1,6 @@
 import { Link, type LoaderContext } from "michi";
 import type { CSSProperties } from "react";
+import { useSEO } from "../../components/use-seo";
 
 const errorBadgeStyle: CSSProperties = {
   display: "inline-flex",
@@ -135,5 +136,11 @@ function LoaderFailError({ error }: { error: unknown }) {
 export const errorComponent = LoaderFailError;
 
 export default function LoaderFailPage() {
+  useSEO({
+    title: "Loader Error",
+    description:
+      "Demo of per-route error isolation when a loader throws. The errorComponent catches and renders error UI independently.",
+    path: "/errors/loader-fail",
+  });
   return <h1>You should never see this - the loader always throws</h1>;
 }

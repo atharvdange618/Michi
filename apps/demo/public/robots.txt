@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://michi.atharvdangedev.in/sitemap.xml

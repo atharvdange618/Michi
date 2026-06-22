@@ -1,7 +1,13 @@
 import { useParams } from "michi";
+import { useSEO } from "../../components/use-seo";
 
 export default function ParamsShowcasePage() {
   const params = useParams<{ id: string }>();
+  useSEO({
+    title: `Params: ${params.id}`,
+    description: `URL parameter "${params.id}" extracted via useParams() - no loader required. Demo of dynamic route parameters.`,
+    path: `/showcase/${params.id}`,
+  });
 
   return (
     <div style={{ maxWidth: "720px" }}>

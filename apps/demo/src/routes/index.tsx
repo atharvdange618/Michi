@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { Link } from "michi";
+import { useSEO } from "../components/use-seo";
 
 const featureCardStyle: CSSProperties = {
   display: "flex",
@@ -77,6 +78,13 @@ const features = [
 ];
 
 export default function IndexPage() {
+  useSEO({
+    title: "Michi",
+    description:
+      "A client-side router for React, built from first principles. No library abstractions - just the History API, regex pattern matching, and React primitives.",
+    path: "/",
+  });
+
   return (
     <div style={{ maxWidth: "720px" }}>
       <div style={{ marginBottom: "3.5rem" }}>

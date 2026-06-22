@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useRouter } from "michi";
+import { useSEO } from "../components/use-seo";
 
 const navBtnStyle: CSSProperties = {
   padding: "12px 16px",
@@ -27,6 +28,12 @@ const routes = [
 ];
 
 export default function NavigatePage() {
+  useSEO({
+    title: "Programmatic Navigation",
+    description:
+      "Demo of useRouter() for programmatic navigation from event handlers and effects in a React client-side router.",
+    path: "/navigate",
+  });
   const router = useRouter();
 
   return (

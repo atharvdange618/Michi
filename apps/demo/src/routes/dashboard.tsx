@@ -1,5 +1,6 @@
 import { Link, Outlet } from "michi";
 import type { CSSProperties } from "react";
+import { useSEO } from "../components/use-seo";
 
 const links = [
   { to: "/dashboard", label: "Overview" },
@@ -21,6 +22,12 @@ const badgeStyle: CSSProperties = {
 };
 
 export default function DashboardLayout() {
+  useSEO({
+    title: "Dashboard",
+    description:
+      "Nested layout demo - persistent sidebar with Outlet pattern for child routes in a client-side router.",
+    path: "/dashboard",
+  });
   return (
     <div
       style={{

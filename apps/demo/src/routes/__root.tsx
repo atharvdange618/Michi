@@ -2,6 +2,23 @@ import { Link, Outlet } from "michi";
 import type { CSSProperties } from "react";
 import { Footer } from "../components/footer";
 
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "Michi",
+  url: "https://michi.atharvdangedev.in",
+  description:
+    "A client-side router for React, built from first principles. No library abstractions - just the History API, regex pattern matching, and React primitives.",
+  author: {
+    "@type": "Person",
+    name: "Atharv Dange",
+    url: "https://github.com/atharvdange618",
+  },
+  programmingLanguage: "TypeScript",
+  license: "https://opensource.org/licenses/MIT",
+  codeRepository: "https://github.com/atharvdange618/Michi",
+};
+
 const navSections = [
   {
     label: "Core",
@@ -69,6 +86,10 @@ export default function RootLayout() {
         flexDirection: "column",
       }}
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <header
         style={{
           borderBottom: "1px solid var(--border)",

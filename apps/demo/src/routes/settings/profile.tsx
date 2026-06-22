@@ -1,3 +1,5 @@
+import { useSEO } from "../../components/use-seo";
+
 const calloutStyle: React.CSSProperties = {
   background: "var(--blue-soft)",
   border: "1px solid var(--blue-border)",
@@ -17,6 +19,12 @@ const codeStyle: React.CSSProperties = {
 };
 
 export default function ProfilePage() {
+  useSEO({
+    title: "Profile",
+    description:
+      "User profile settings page - nested child route within the settings layout using Outlet pattern.",
+    path: "/settings/profile",
+  });
   return (
     <div>
       <h2

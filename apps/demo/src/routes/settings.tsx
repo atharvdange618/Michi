@@ -1,5 +1,6 @@
 import { Link, Outlet } from "michi";
 import type { CSSProperties } from "react";
+import { useSEO } from "../components/use-seo";
 
 const links = [
   { to: "/settings/profile", label: "Profile" },
@@ -21,6 +22,12 @@ const badgeStyle: CSSProperties = {
 };
 
 export default function SettingsLayout() {
+  useSEO({
+    title: "Settings",
+    description:
+      "Settings layout demo - persistent sidebar with Outlet for nested child routes in a client-side router.",
+    path: "/settings",
+  });
   return (
     <div
       style={{

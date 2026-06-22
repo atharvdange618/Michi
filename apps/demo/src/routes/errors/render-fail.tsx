@@ -130,6 +130,7 @@ function RenderFailError({ error }: { error: unknown }) {
 export const errorComponent = RenderFailError;
 
 export default function RenderFailPage() {
+  document.title = "Render Error | Michi";
   throw new Error("Component intentionally threw during render");
   return null;
 }

@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { useParams } from "michi";
+import { useSEO } from "../../components/use-seo";
 
 const breadcrumbBarStyle: CSSProperties = {
   display: "flex",
@@ -56,6 +57,11 @@ const infoBoxStyle: CSSProperties = {
 
 export default function FilePage() {
   const { "*": filePath } = useParams<{ "*": string }>();
+  useSEO({
+    title: "Wildcard Routes",
+    description: `Wildcard path "${filePath}" caught by /files/* - demo of catch-all route parameters in a client-side router.`,
+    path: `/files/${filePath}`,
+  });
   const segments = filePath.split("/").filter(Boolean);
 
   return (

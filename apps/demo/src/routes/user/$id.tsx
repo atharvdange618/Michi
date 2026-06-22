@@ -1,5 +1,6 @@
 import { type LoaderContext, useLoaderData } from "michi";
 import { type User, fetchUser } from "../../mocks/api";
+import { useSEO } from "../../components/use-seo";
 
 export async function loader({ params }: LoaderContext<{ id: string }>) {
   return fetchUser(params.id);
@@ -7,6 +8,11 @@ export async function loader({ params }: LoaderContext<{ id: string }>) {
 
 export default function UserPage() {
   const user = useLoaderData<User>();
+  useSEO({
+    title: `User: ${user.name}`,
+    description: `User profile for ${user.name} (${user.email}) - demo of loader + useLoaderData() for data fetching in a client-side router.`,
+    path: `/user/${user.id}`,
+  });
 
   return (
     <div style={{ maxWidth: "720px" }}>
