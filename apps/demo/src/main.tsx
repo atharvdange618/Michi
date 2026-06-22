@@ -15,6 +15,13 @@ import ProfilePage from "./routes/settings/profile";
 import BillingPage from "./routes/settings/billing";
 import FilePage from "./routes/files/$wildcard";
 import ParamsShowcasePage from "./routes/showcase/$id";
+import LoaderFailPage, {
+  loader as loaderFailLoader,
+  errorComponent as loaderFailError,
+} from "./routes/errors/loader-fail";
+import RenderFailPage, {
+  errorComponent as renderFailError,
+} from "./routes/errors/render-fail";
 
 const router = new Router([
   {
@@ -48,6 +55,17 @@ const router = new Router([
           { path: "/settings/profile", component: ProfilePage },
           { path: "/settings/billing", component: BillingPage },
         ],
+      },
+      {
+        path: "/errors/loader-fail",
+        component: LoaderFailPage,
+        loader: loaderFailLoader,
+        errorComponent: loaderFailError,
+      },
+      {
+        path: "/errors/render-fail",
+        component: RenderFailPage,
+        errorComponent: renderFailError,
       },
     ],
   },
