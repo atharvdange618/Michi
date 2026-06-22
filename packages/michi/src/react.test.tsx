@@ -16,6 +16,7 @@ import {
   useRouterState,
   useParams,
   useLoaderData,
+  useRouteError,
 } from "./react";
 
 let mockPathname = "/";
@@ -327,9 +328,7 @@ describe("Link props forwarding", () => {
             <Outlet />
           </div>
         ),
-        children: [
-          { path: "/about", component: () => <div>about</div> },
-        ],
+        children: [{ path: "/about", component: () => <div>about</div> }],
       },
     ];
     render(<TestRouter routes={routes} />);
@@ -459,9 +458,7 @@ describe("useLoaderData", () => {
             <Outlet />
           </div>
         ),
-        children: [
-          { path: "/user/$id", component: DataPage, loader },
-        ],
+        children: [{ path: "/user/$id", component: DataPage, loader }],
       },
     ];
 
@@ -522,7 +519,10 @@ describe("Loading state", () => {
   it("shows custom loading component during initial load", async () => {
     let resolveLoader: (value: unknown) => void;
     const loader = vi.fn().mockImplementation(
-      () => new Promise((resolve) => { resolveLoader = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveLoader = resolve;
+        }),
     );
 
     setMockPathname("/slow");
@@ -530,18 +530,13 @@ describe("Loading state", () => {
       {
         path: "__root",
         component: () => <Outlet />,
-        children: [
-          { path: "/slow", component: () => <div>page</div>, loader },
-        ],
+        children: [{ path: "/slow", component: () => <div>page</div>, loader }],
       },
     ];
 
     const router = new Router(routes);
     const { container } = render(
-      <RouterProvider
-        router={router}
-        loading={<div>custom loading</div>}
-      />,
+      <RouterProvider router={router} loading={<div>custom loading</div>} />,
     );
 
     await waitFor(() => {
@@ -557,7 +552,10 @@ describe("Loading state", () => {
   it("shows default Loading component when no loading prop", async () => {
     let resolveLoader: (value: unknown) => void;
     const loader = vi.fn().mockImplementation(
-      () => new Promise((resolve) => { resolveLoader = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveLoader = resolve;
+        }),
     );
 
     setMockPathname("/slow");
@@ -565,9 +563,7 @@ describe("Loading state", () => {
       {
         path: "__root",
         component: () => <Outlet />,
-        children: [
-          { path: "/slow", component: () => <div>page</div>, loader },
-        ],
+        children: [{ path: "/slow", component: () => <div>page</div>, loader }],
       },
     ];
 
@@ -582,5 +578,212 @@ describe("Loading state", () => {
     await waitFor(() => {
       expect(screen.getByText("page")).toBeDefined();
     });
+  });
+});
+
+describe("RouteErrorBoundary", () => {
+  it("catches render errors and shows default error component", async () => {
+    function Boom(): React.JSX.Element {
+      throw new Error("render exploded");
+    }
+
+    setMockPathname("/boom");
+    const routes = [
+      {
+        path: "__root",
+        component: () => (
+          <div>
+            <span>root</span>
+            <Outlet />
+          </div>
+        ),
+        children: [{ path: "/boom", component: Boom }],
+      },
+    ];
+
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("Something broke")).toBeDefined();
+    });
+    expect(screen.getByText("render exploded")).toBeDefined();
+    spy.mockRestore();
+  });
+
+  it("uses custom errorComponent when provided", async () => {
+    function Boom(): React.JSX.Element {
+      throw new Error("custom boom");
+    }
+    function CustomError({ error }: { error: unknown }) {
+      return (
+        <div>
+          <span>custom error</span>
+          <span>{(error as Error).message}</span>
+        </div>
+      );
+    }
+
+    setMockPathname("/custom");
+    const routes = [
+      {
+        path: "__root",
+        component: () => <Outlet />,
+        children: [
+          {
+            path: "/custom",
+            component: Boom,
+            errorComponent: CustomError,
+          },
+        ],
+      },
+    ];
+
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("custom error")).toBeDefined();
+    });
+    expect(screen.getByText("custom boom")).toBeDefined();
+    spy.mockRestore();
+  });
+
+  it("shows error component when loader throws", async () => {
+    const loader = vi.fn().mockRejectedValue(new Error("loader failed"));
+    function CustomError({ error }: { error: unknown }) {
+      return <span>{(error as Error).message}</span>;
+    }
+
+    setMockPathname("/loader-error");
+    const routes = [
+      {
+        path: "__root",
+        component: () => <Outlet />,
+        children: [
+          {
+            path: "/loader-error",
+            component: () => <div>should not render</div>,
+            loader,
+            errorComponent: CustomError,
+          },
+        ],
+      },
+    ];
+
+    render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("loader failed")).toBeDefined();
+    });
+    expect(screen.queryByText("should not render")).toBeNull();
+  });
+
+  it("error in child does not crash parent layout", async () => {
+    function Boom(): React.JSX.Element {
+      throw new Error("child error");
+    }
+
+    setMockPathname("/child-error");
+    const routes = [
+      {
+        path: "__root",
+        component: () => (
+          <div>
+            <span>parent layout</span>
+            <Outlet />
+          </div>
+        ),
+        children: [{ path: "/child-error", component: Boom }],
+      },
+    ];
+
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("parent layout")).toBeDefined();
+    });
+    expect(screen.getByText("Something broke")).toBeDefined();
+    spy.mockRestore();
+  });
+
+  it("useRouteError returns the error inside error component", async () => {
+    let capturedError: unknown;
+    function Boom(): React.JSX.Element {
+      throw new Error("hook test");
+    }
+    function ErrorCapture({ error }: { error: unknown }) {
+      capturedError = useRouteError();
+      return <span>captured</span>;
+    }
+
+    setMockPathname("/hook-error");
+    const routes = [
+      {
+        path: "__root",
+        component: () => <Outlet />,
+        children: [
+          {
+            path: "/hook-error",
+            component: Boom,
+            errorComponent: ErrorCapture,
+          },
+        ],
+      },
+    ];
+
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("captured")).toBeDefined();
+    });
+    expect(capturedError).toBeInstanceOf(Error);
+    expect((capturedError as Error).message).toBe("hook test");
+    spy.mockRestore();
+  });
+
+  it("child render error is isolated and does not crash parent layout", async () => {
+    function ChildBoom(): React.JSX.Element {
+      throw new Error("child broke");
+    }
+
+    setMockPathname("/isolated");
+    const routes = [
+      {
+        path: "__root",
+        component: () => (
+          <div>
+            <span>root</span>
+            <Outlet />
+          </div>
+        ),
+        children: [
+          {
+            path: "/isolated",
+            component: () => (
+              <div>
+                <span>parent layout</span>
+                <Outlet />
+              </div>
+            ),
+            children: [
+              {
+                path: "/isolated",
+                component: ChildBoom,
+                errorComponent: ({ error }: { error: unknown }) => (
+                  <span>{(error as Error).message}</span>
+                ),
+              },
+            ],
+          },
+        ],
+      },
+    ];
+
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("root")).toBeDefined();
+    });
+    expect(screen.getByText("parent layout")).toBeDefined();
+    expect(screen.getByText("child broke")).toBeDefined();
+    spy.mockRestore();
   });
 });

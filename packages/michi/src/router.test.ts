@@ -195,9 +195,7 @@ describe("Loaders", () => {
       {
         path: "__root",
         component: () => null,
-        children: [
-          { path: "/user/$id", component: () => null, loader },
-        ],
+        children: [{ path: "/user/$id", component: () => null, loader }],
       },
     ];
 
@@ -217,9 +215,7 @@ describe("Loaders", () => {
       {
         path: "__root",
         component: () => null,
-        children: [
-          { path: "/user/$id", component: () => null, loader },
-        ],
+        children: [{ path: "/user/$id", component: () => null, loader }],
       },
     ];
 
@@ -236,15 +232,16 @@ describe("Loaders", () => {
   it("sets status to loading then idle on navigation", async () => {
     let resolveLoader: (value: unknown) => void;
     const loader = vi.fn().mockImplementation(
-      () => new Promise((resolve) => { resolveLoader = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveLoader = resolve;
+        }),
     );
     const routesWithLoader: RouteDefinition[] = [
       {
         path: "__root",
         component: () => null,
-        children: [
-          { path: "/slow", component: () => null, loader },
-        ],
+        children: [{ path: "/slow", component: () => null, loader }],
       },
     ];
 
@@ -257,9 +254,12 @@ describe("Loaders", () => {
     });
 
     router.navigate("/slow");
-    await vi.waitFor(() => {
-      expect(statuses).toContain("loading");
-    }, { timeout: 2000 });
+    await vi.waitFor(
+      () => {
+        expect(statuses).toContain("loading");
+      },
+      { timeout: 2000 },
+    );
 
     resolveLoader!(null);
     await waitForIdle(router);
@@ -272,10 +272,16 @@ describe("Loaders", () => {
     let resolveSecond: (value: unknown) => void;
 
     const firstLoader = vi.fn().mockImplementation(
-      () => new Promise((resolve) => { resolveFirst = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveFirst = resolve;
+        }),
     );
     const secondLoader = vi.fn().mockImplementation(
-      () => new Promise((resolve) => { resolveSecond = resolve; }),
+      () =>
+        new Promise((resolve) => {
+          resolveSecond = resolve;
+        }),
     );
 
     const routesWithLoaders: RouteDefinition[] = [
@@ -352,9 +358,7 @@ describe("Loaders", () => {
       {
         path: "__root",
         component: () => null,
-        children: [
-          { path: "/user/$id", component: () => null, loader },
-        ],
+        children: [{ path: "/user/$id", component: () => null, loader }],
       },
     ];
 
@@ -402,27 +406,60 @@ describe("Loaders", () => {
     expect(childLoader).toHaveBeenCalledTimes(2);
   });
 
-  it("sets status to error when loader throws", async () => {
+  it("puts loader error on match when loader throws", async () => {
     const loader = vi.fn().mockRejectedValue(new Error("fetch failed"));
     const routesWithLoader: RouteDefinition[] = [
       {
         path: "__root",
         component: () => null,
-        children: [
-          { path: "/fail", component: () => null, loader },
-        ],
+        children: [{ path: "/fail", component: () => null, loader }],
       },
     ];
 
     const router = new Router(routesWithLoader);
     await waitForIdle(router);
     router.navigate("/fail");
-    await vi.waitFor(() => {
-      expect(router.getState().status).toBe("error");
-    });
+    await waitForIdle(router);
 
     const state = router.getState();
-    expect(state.error).toBeInstanceOf(Error);
-    expect((state.error as Error).message).toBe("fetch failed");
+    expect(state.status).toBe("idle");
+    const failMatch = state.matches.find((m) => m.routeId === "/fail");
+    expect(failMatch).toBeDefined();
+    expect(failMatch!.error).toBeInstanceOf(Error);
+    expect((failMatch!.error as Error).message).toBe("fetch failed");
+  });
+
+  it("clears loader error on successful re-run", async () => {
+    let shouldFail = true;
+    const loader = vi.fn().mockImplementation(async () => {
+      if (shouldFail) throw new Error("temporary failure");
+      return { ok: true };
+    });
+
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/flaky", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    router.navigate("/flaky");
+    await waitForIdle(router);
+    let state = router.getState();
+    let match = state.matches.find((m) => m.routeId === "/flaky");
+    expect(match!.error).toBeInstanceOf(Error);
+    expect((match!.error as Error).message).toBe("temporary failure");
+
+    shouldFail = false;
+    router.navigate("/flaky");
+    await waitForIdle(router);
+    state = router.getState();
+    match = state.matches.find((m) => m.routeId === "/flaky");
+    expect(match!.error).toBeUndefined();
+    expect(match!.loaderData).toEqual({ ok: true });
   });
 });
