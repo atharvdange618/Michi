@@ -16,8 +16,8 @@ Every feature is built as a **slice** - a self-contained, demonstrable milestone
 | 2     | ✅ Done | **Route Matching** - turning URL patterns like `/user/$id` into regex that actually matches   |
 | 3     | ✅ Done | **Nested Routes** - the route tree, `<Outlet />`, and layouts that persist across navigations |
 | 4     | ✅ Done | **Data Loaders** - render-as-you-fetch vs fetch-on-render                                     |
-| 5     | 🔲 Next | **Error Boundaries** - isolating failures per route instead of blank screens                  |
-| 6     | 🔲      | **Prefetch on Hover** - running loaders early so navigation feels instant                     |
+| 5     | ✅ Done | **Error Boundaries** - isolating failures per route instead of blank screens                  |
+| 6     | 🔲 Next | **Prefetch on Hover** - running loaders early so navigation feels instant                     |
 | 7     | 🔲      | **Search Params** - typed, serializable state that lives in the URL                           |
 | 8     | 🔲      | **File-Based Routing** - a codegen script that reads your filesystem                          |
 | 9     | 🔲      | **Typed Routes** - compile-time safety for paths, params, and loader data                     |
@@ -32,7 +32,7 @@ Every feature is built as a **slice** - a self-contained, demonstrable milestone
 
 ## What's done
 
-Slices 1–4 are built and working. The router supports:
+Slices 1–5 are built and working. The router supports:
 
 - **Dynamic params** - `/user/$id` matches `/user/atharv` and extracts `{ id: "atharv" }`
 - **Wildcard routes** - `/files/*` matches `/files/public/uploads/report.pdf` and captures the full path
@@ -44,6 +44,9 @@ Slices 1–4 are built and working. The router supports:
 - **Data loaders** - fetch data before rendering with `useLoaderData()` hook
 - **Parallel loader execution** - all matched route loaders run simultaneously
 - **Race condition protection** - stale loader results are discarded on rapid navigation
+- **Per-route error boundaries** - loader and render errors are isolated to the failing route
+- **Custom error components** - each route can define its own `errorComponent`
+- **useRouteError hook** - access the error from within an error component
 
 Check out [the blog post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) for the deep dive on Slices 1–2 (History API + Route Matching).
 
@@ -61,6 +64,8 @@ The demo app at `apps/demo/` showcases every feature of the router:
 /dashboard/analytics - Nested outlet (3 levels deep)
 /settings/profile    - Nested layout with sidebar + Outlet
 /settings/billing    - Same layout, different child
+/errors/loader-fail  - Demo: loader error with custom error component
+/errors/render-fail  - Demo: render error with custom error component
 ```
 
 ## License
