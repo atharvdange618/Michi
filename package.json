@@ -7,7 +7,10 @@
     "build": "turbo build",
     "test": "turbo test",
     "codegen": "turbo codegen",
-    "doctor": "npx react-doctor@latest"
+    "doctor": "npx react-doctor@latest",
+    "lint": "oxlint -c .oxlintrc.json packages/michi/src apps/demo/src",
+    "format": "oxfmt --check packages/michi/src apps/demo/src",
+    "format:fix": "oxfmt packages/michi/src apps/demo/src"
   },
   "keywords": [
     "router",
@@ -28,6 +31,8 @@
     "url": "https://github.com/atharvdange618/Michi/issues"
   },
   "devDependencies": {
+    "oxfmt": "^0.55.0",
+    "oxlint": "^1.70.0",
     "turbo": "^2.9.17",
     "typescript": "~6.0.2"
   },
