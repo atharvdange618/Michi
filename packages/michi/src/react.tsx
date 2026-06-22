@@ -76,7 +76,7 @@ function matchKey(match: RouteMatch): string {
     .sort()
     .reduce(
       (acc, k) => {
-        acc[k] = match.params[k];
+        acc[k] = match.params[k]!;
         return acc;
       },
       {} as Record<string, string>,

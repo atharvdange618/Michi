@@ -57,7 +57,7 @@ export function matchRoute(pattern: string, path: string): Record<string, string
 
   // match[0] is the full string, params start at match[1]
   paramNames.forEach((name, i) => {
-    params[name] = decodeURIComponent(match[i + 1]);
+    params[name] = decodeURIComponent(match[i + 1]!);
   });
 
   return params;

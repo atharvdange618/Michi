@@ -81,8 +81,8 @@ describe("Router", () => {
     await waitForIdle(router);
     const state = router.getState();
     expect(state.matches).toHaveLength(2);
-    expect(state.matches[0].routeId).toBe("__root");
-    expect(state.matches[1].routeId).toBe("/about");
+    expect(state.matches[0]!.routeId).toBe("__root");
+    expect(state.matches[1]!.routeId).toBe("/about");
   });
 
   it("navigate() updates state", async () => {
@@ -93,7 +93,7 @@ describe("Router", () => {
     await waitForIdle(router);
 
     const state = router.getState();
-    expect(state.matches[1].routeId).toBe("/about");
+    expect(state.matches[1]!.routeId).toBe("/about");
   });
 
   it("subscribe() fires on navigation", async () => {
@@ -150,7 +150,7 @@ describe("Router", () => {
     await waitForIdle(router);
 
     const state = router.getState();
-    expect(state.matches[1].params).toEqual({ id: "atharv" });
+    expect(state.matches[1]!.params).toEqual({ id: "atharv" });
   });
 
   it("returns empty matches for unmatched routes", async () => {
@@ -162,7 +162,7 @@ describe("Router", () => {
 
     const state = router.getState();
     expect(state.matches).toHaveLength(1);
-    expect(state.matches[0].routeId).toBe("__root");
+    expect(state.matches[0]!.routeId).toBe("__root");
   });
 
   it("navigate() returns early on invalid path", async () => {
@@ -199,7 +199,7 @@ describe("Loaders", () => {
 
     expect(loader).toHaveBeenCalled();
     const state = router.getState();
-    expect(state.matches[1].loaderData).toEqual({ name: "atharv" });
+    expect(state.matches[1]!.loaderData).toEqual({ name: "atharv" });
   });
 
   it("passes params in LoaderContext", async () => {
@@ -295,12 +295,12 @@ describe("Loaders", () => {
     resolveSecond!({ page: "fast" });
     await waitForIdle(router);
 
-    expect(router.getState().matches[1].loaderData).toEqual({ page: "fast" });
+    expect(router.getState().matches[1]!.loaderData).toEqual({ page: "fast" });
 
     resolveFirst!({ page: "slow" });
     await new Promise((r) => setTimeout(r, 0));
 
-    expect(router.getState().matches[1].loaderData).toEqual({ page: "fast" });
+    expect(router.getState().matches[1]!.loaderData).toEqual({ page: "fast" });
   });
 
   it("runs loaders in parallel for nested routes", async () => {
@@ -332,8 +332,8 @@ describe("Loaders", () => {
     await waitForIdle(router);
 
     expect(callOrder).toEqual(["root-start", "child-start", "root-end", "child-end"]);
-    expect(router.getState().matches[0].loaderData).toBe("root-data");
-    expect(router.getState().matches[1].loaderData).toBe("child-data");
+    expect(router.getState().matches[0]!.loaderData).toBe("root-data");
+    expect(router.getState().matches[1]!.loaderData).toBe("child-data");
   });
 
   it("skips loader when route and params haven't changed", async () => {

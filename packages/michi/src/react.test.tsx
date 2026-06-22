@@ -255,7 +255,7 @@ describe("useRouterState", () => {
       expect(capturedState).not.toBeNull();
       expect(capturedState!.status).toBe("idle");
     });
-    expect(capturedState!.matches[1].routeId).toBe("/test");
+    expect(capturedState!.matches[1]!.routeId).toBe("/test");
   });
 });
 
@@ -691,7 +691,7 @@ describe("RouteErrorBoundary", () => {
     function Boom(): React.JSX.Element {
       throw new Error("hook test");
     }
-    function ErrorCapture({ error }: { error: unknown }) {
+    function ErrorCapture({ error: _error }: { error: unknown }) {
       capturedError = useRouteError();
       return <span>captured</span>;
     }

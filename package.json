@@ -9,8 +9,11 @@
     "codegen": "turbo codegen",
     "doctor": "npx react-doctor@latest",
     "lint": "oxlint -c .oxlintrc.json packages/michi/src apps/demo/src",
-    "format": "oxfmt --check packages/michi/src apps/demo/src",
-    "format:fix": "oxfmt packages/michi/src apps/demo/src"
+    "format": "oxfmt packages/michi/src apps/demo/src",
+    "format:check": "oxfmt --check packages/michi/src apps/demo/src",
+    "lint:fix": "oxlint -c .oxlintrc.json --fix packages/michi/src apps/demo/src",
+    "prepare": "husky",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [
     "router",
@@ -31,10 +34,19 @@
     "url": "https://github.com/atharvdange618/Michi/issues"
   },
   "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.4",
     "oxfmt": "^0.55.0",
     "oxlint": "^1.70.0",
     "turbo": "^2.9.17",
     "typescript": "~6.0.2"
   },
-  "packageManager": "pnpm@11.6.0"
+  "packageManager": "pnpm@11.6.0",
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "oxlint -c .oxlintrc.json --fix"
+    ]
+  }
 }
