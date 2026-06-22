@@ -1,21 +1,28 @@
 import React, {
+  Component,
+  type ErrorInfo,
   type ReactNode,
+  type ComponentType,
   createContext,
   useCallback,
   useContext,
   useSyncExternalStore,
 } from "react";
 import type { Router } from "./router";
-import type { RouterState } from "./types";
+import type { RouterState, RouteMatch } from "./types";
 import { NotFound } from "./components/not-found";
 import { Loading } from "./components/loading";
+import { RouteError as DefaultRouteError } from "./components/route-error";
 
 const RouterContext = createContext<Router | null>(null);
 
 // tracks which index into matches[] the next <Outlet /> should render.
-// RouterProvider always renders matches[0] directly and sets this to 1
-// each <Outlet /> reads its index, renders that match, and then sets the next index
+// RouterProvider always renders matches[0] directly and sets this to 1.
+// each <Outlet /> reads its index, renders that match, and then sets the next index.
 const OutletContext = createContext<number>(1);
+
+const NO_ERROR = Symbol("no-error");
+const RouteErrorContext = createContext<unknown>(NO_ERROR);
 
 export function useRouter(): Router {
   const router = useContext(RouterContext);
@@ -65,6 +72,68 @@ export function useLoaderData<T = unknown>(): T {
   return match?.loaderData as T;
 }
 
+export function useRouteError(): unknown {
+  const error = useContext(RouteErrorContext);
+  return error === NO_ERROR ? undefined : error;
+}
+
+function matchKey(match: RouteMatch): string {
+  const sorted = Object.keys(match.params)
+    .sort()
+    .reduce(
+      (acc, k) => {
+        acc[k] = match.params[k];
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+  return `${match.routeId}:${JSON.stringify(sorted)}`;
+}
+
+type RouteErrorBoundaryProps = {
+  error?: unknown;
+  errorComponent?: ComponentType<{ error: unknown }>;
+  children: ReactNode;
+};
+
+type RouteErrorBoundaryState = {
+  renderError: unknown;
+};
+
+class RouteErrorBoundary extends Component<
+  RouteErrorBoundaryProps,
+  RouteErrorBoundaryState
+> {
+  state: RouteErrorBoundaryState = { renderError: undefined };
+
+  static getDerivedStateFromError(error: unknown): RouteErrorBoundaryState {
+    return { renderError: error };
+  }
+
+  componentDidCatch(error: unknown, errorInfo: ErrorInfo): void {
+    console.error("Michi caught a render error in a route:", error, errorInfo);
+  }
+
+  render(): ReactNode {
+    // loader error takes precedence here
+    const error = this.props.error ?? this.state.renderError;
+
+    if (error !== undefined) {
+      if (this.props.error) {
+        console.error("Michi caught a loader error in a route:", error);
+      }
+      const ErrorComponent = this.props.errorComponent ?? DefaultRouteError;
+      return (
+        <RouteErrorContext.Provider value={error}>
+          <ErrorComponent error={error} />
+        </RouteErrorContext.Provider>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 export function RouterProvider({
   router,
   loading,
@@ -91,13 +160,16 @@ export function RouterProvider({
     <RouterContext.Provider value={router}>
       {state.status === "loading" && !rootMatch ? (
         loadingComponent
-      ) : state.status === "error" && !rootMatch ? (
-        // TODO: Slice 5 - render errorComponent per-route instead of NotFound
-        <NotFound />
       ) : rootMatch ? (
-        <OutletContext.Provider value={1}>
-          <rootMatch.component />
-        </OutletContext.Provider>
+        <RouteErrorBoundary
+          key={matchKey(rootMatch)}
+          error={rootMatch.error}
+          errorComponent={rootMatch.errorComponent}
+        >
+          <OutletContext.Provider value={1}>
+            <rootMatch.component />
+          </OutletContext.Provider>
+        </RouteErrorBoundary>
       ) : (
         <NotFound />
       )}
@@ -117,19 +189,25 @@ export function Outlet({
   if (!match) return <>{fallback}</>;
 
   return (
-    <OutletContext.Provider value={matchIndex + 1}>
-      <match.component />
-    </OutletContext.Provider>
+    <RouteErrorBoundary
+      key={matchKey(match)}
+      error={match.error}
+      errorComponent={match.errorComponent}
+    >
+      <OutletContext.Provider value={matchIndex + 1}>
+        <match.component />
+      </OutletContext.Provider>
+    </RouteErrorBoundary>
   );
 }
 
-export const Link = React.forwardRef<HTMLAnchorElement, {
-  to: string;
-  children: React.ReactNode;
-} & React.AnchorHTMLAttributes<HTMLAnchorElement>>(function Link(
-  { to, children, ...rest },
-  ref,
-) {
+export const Link = React.forwardRef<
+  HTMLAnchorElement,
+  {
+    to: string;
+    children: React.ReactNode;
+  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
+>(function Link({ to, children, ...rest }, ref) {
   const router = useRouter();
 
   return (
