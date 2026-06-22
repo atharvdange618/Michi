@@ -1,23 +1,52 @@
+import type { CSSProperties } from "react";
+
+const outlineBtnStyle: CSSProperties = {
+  padding: "6px 12px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  fontSize: "13px",
+  color: "var(--ink-muted)",
+  textDecoration: "none",
+  transition: "opacity 150ms ease",
+  background: "var(--surface)",
+};
+
+const blogCardStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "14px 18px",
+  border: "1px solid var(--border-subtle)",
+  borderRadius: "var(--radius)",
+  textDecoration: "none",
+  color: "inherit",
+  background: "var(--surface)",
+  transition: "opacity 150ms ease",
+};
+
 export default function AboutPage() {
   return (
-    <div style={{ maxWidth: "640px" }}>
+    <div style={{ maxWidth: "720px" }}>
       <h1
         style={{
-          fontSize: "40px",
+          fontSize: "clamp(32px, 4vw, 44px)",
           fontWeight: 800,
-          letterSpacing: "-1.5px",
-          margin: "0 0 1.5rem",
+          letterSpacing: "-0.03em",
+          lineHeight: 1.1,
+          margin: "0 0 2rem",
+          textWrap: "balance",
         }}
       >
         About Michi
       </h1>
 
-      <section style={{ marginBottom: "2rem" }}>
+      <section style={{ marginBottom: "2.5rem" }}>
         <h2
           style={{
-            fontSize: "18px",
+            fontSize: "17px",
             fontWeight: 700,
-            margin: "0 0 0.5rem",
+            margin: "0 0 0.6rem",
+            letterSpacing: "-0.01em",
           }}
         >
           What is this?
@@ -25,9 +54,10 @@ export default function AboutPage() {
         <p
           style={{
             fontSize: "15px",
-            color: "#555",
+            color: "var(--ink-muted)",
             lineHeight: 1.7,
             margin: 0,
+            maxWidth: "60ch",
           }}
         >
           Michi (道) is a client-side router for React, built from first
@@ -39,12 +69,13 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section style={{ marginBottom: "2rem" }}>
+      <section style={{ marginBottom: "2.5rem" }}>
         <h2
           style={{
-            fontSize: "18px",
+            fontSize: "17px",
             fontWeight: 700,
-            margin: "0 0 0.5rem",
+            margin: "0 0 0.6rem",
+            letterSpacing: "-0.01em",
           }}
         >
           Why does this exist?
@@ -52,9 +83,10 @@ export default function AboutPage() {
         <p
           style={{
             fontSize: "15px",
-            color: "#555",
+            color: "var(--ink-muted)",
             lineHeight: 1.7,
             margin: 0,
+            maxWidth: "60ch",
           }}
         >
           I've used React Router and TanStack Router in production for years.
@@ -69,9 +101,10 @@ export default function AboutPage() {
         <p
           style={{
             fontSize: "15px",
-            color: "#555",
+            color: "var(--ink-muted)",
             lineHeight: 1.7,
             margin: "1rem 0 0",
+            maxWidth: "60ch",
           }}
         >
           So I started building one. Michi follows the same spirit as my other
@@ -82,8 +115,8 @@ export default function AboutPage() {
         <div
           style={{
             display: "flex",
-            gap: "1rem",
-            marginTop: "1rem",
+            gap: "0.6rem",
+            marginTop: "1.25rem",
             flexWrap: "wrap",
           }}
         >
@@ -91,13 +124,14 @@ export default function AboutPage() {
             href="https://github.com/atharvdange618/rendering-strategies"
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              padding: "0.5rem 0.75rem",
-              border: "1px solid #e0dbd4",
-              borderRadius: "6px",
-              fontSize: "13px",
-              color: "#555",
-              textDecoration: "none",
+            style={outlineBtnStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.color = "var(--ink)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.color = "var(--ink-muted)";
             }}
           >
             rendering-strategies
@@ -106,13 +140,14 @@ export default function AboutPage() {
             href="https://tty.atharvdangedev.in/blog/rendering-strategies"
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              padding: "0.5rem 0.75rem",
-              border: "1px solid #e0dbd4",
-              borderRadius: "6px",
-              fontSize: "13px",
-              color: "#555",
-              textDecoration: "none",
+            style={outlineBtnStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.color = "var(--ink)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.color = "var(--ink-muted)";
             }}
           >
             rendering strategies blog
@@ -121,13 +156,14 @@ export default function AboutPage() {
             href="https://github.com/atharvdange618/React-Vdom"
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              padding: "0.5rem 0.75rem",
-              border: "1px solid #e0dbd4",
-              borderRadius: "6px",
-              fontSize: "13px",
-              color: "#555",
-              textDecoration: "none",
+            style={outlineBtnStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.color = "var(--ink)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.color = "var(--ink-muted)";
             }}
           >
             React-Vdom
@@ -135,12 +171,120 @@ export default function AboutPage() {
         </div>
       </section>
 
-      <section style={{ marginBottom: "2rem" }}>
+      <section style={{ marginBottom: "2.5rem" }}>
         <h2
           style={{
-            fontSize: "18px",
+            fontSize: "17px",
             fontWeight: 700,
-            margin: "0 0 0.5rem",
+            margin: "0 0 0.6rem",
+            letterSpacing: "-0.01em",
+          }}
+        >
+          Blog posts
+        </h2>
+        <p
+          style={{
+            fontSize: "15px",
+            color: "var(--ink-muted)",
+            lineHeight: 1.7,
+            margin: "0 0 1rem",
+            maxWidth: "60ch",
+          }}
+        >
+          Each slice of Michi has a corresponding blog post that walks through
+          the implementation from first principles.
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+          <a
+            href="https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={blogCardStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border-subtle)";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  marginBottom: "2px",
+                }}
+              >
+                What Actually Happens When You Click a Link in React
+              </div>
+              <div style={{ fontSize: "13px", color: "var(--ink-muted)" }}>
+                History API, route matching, useSyncExternalStore - Slices 1-2
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: "12px",
+                fontFamily: "'Geist Mono', monospace",
+                color: "var(--ink-faint)",
+                whiteSpace: "nowrap",
+                marginLeft: "1rem",
+              }}
+            >
+              June 12
+            </span>
+          </a>
+          <a
+            href="https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={blogCardStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border-subtle)";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  marginBottom: "2px",
+                }}
+              >
+                Layouts That Persist and Data That Arrives Before You Do
+              </div>
+              <div style={{ fontSize: "13px", color: "var(--ink-muted)" }}>
+                Nested routes, Outlet pattern, data loaders - Slices 3-4
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: "12px",
+                fontFamily: "'Geist Mono', monospace",
+                color: "var(--ink-faint)",
+                whiteSpace: "nowrap",
+                marginLeft: "1rem",
+              }}
+            >
+              June 16
+            </span>
+          </a>
+        </div>
+      </section>
+
+      <section style={{ marginBottom: "2.5rem" }}>
+        <h2
+          style={{
+            fontSize: "17px",
+            fontWeight: 700,
+            margin: "0 0 0.6rem",
+            letterSpacing: "-0.01em",
           }}
         >
           The name
@@ -148,9 +292,10 @@ export default function AboutPage() {
         <p
           style={{
             fontSize: "15px",
-            color: "#555",
+            color: "var(--ink-muted)",
             lineHeight: 1.7,
             margin: 0,
+            maxWidth: "60ch",
           }}
         >
           道 (michi) is Japanese for "path" or "the way." Seemed fitting for a
@@ -159,12 +304,13 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section style={{ marginBottom: "2rem" }}>
+      <section style={{ marginBottom: "2.5rem" }}>
         <h2
           style={{
-            fontSize: "18px",
+            fontSize: "17px",
             fontWeight: 700,
-            margin: "0 0 0.5rem",
+            margin: "0 0 0.6rem",
+            letterSpacing: "-0.01em",
           }}
         >
           Tech stack
@@ -172,10 +318,11 @@ export default function AboutPage() {
         <ul
           style={{
             fontSize: "15px",
-            color: "#555",
+            color: "var(--ink-muted)",
             lineHeight: 1.7,
             margin: 0,
             paddingLeft: "1.25rem",
+            maxWidth: "60ch",
           }}
         >
           <li>TypeScript (strict, from day one)</li>

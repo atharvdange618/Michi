@@ -1,4 +1,29 @@
+import type { CSSProperties } from "react";
 import { Link } from "michi";
+
+const featureCardStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  padding: "14px 18px",
+  border: "1px solid var(--border-subtle)",
+  borderRadius: "var(--radius)",
+  textDecoration: "none",
+  color: "inherit",
+  background: "var(--surface)",
+  transition: "opacity 150ms ease",
+};
+
+const tagStyle: CSSProperties = {
+  fontSize: "12px",
+  fontFamily: "'Geist Mono', monospace",
+  color: "var(--ink-faint)",
+  whiteSpace: "nowrap",
+  marginLeft: "1rem",
+  padding: "2px 8px",
+  background: "var(--bg-raised)",
+  borderRadius: "4px",
+};
 
 const features = [
   {
@@ -37,78 +62,90 @@ const features = [
     to: "/navigate",
     tag: "Slice 1",
   },
+  {
+    title: "Loader Errors",
+    desc: "Per-route error isolation when a loader throws",
+    to: "/errors/loader-fail",
+    tag: "Slice 5",
+  },
+  {
+    title: "Render Errors",
+    desc: "React error boundaries catch component throw",
+    to: "/errors/render-fail",
+    tag: "Slice 5",
+  },
 ];
 
 export default function IndexPage() {
   return (
-    <div style={{ maxWidth: "640px" }}>
-      <h1
-        style={{
-          fontSize: "48px",
-          fontWeight: 800,
-          letterSpacing: "-2px",
-          lineHeight: 1.1,
-          margin: "0 0 0.75rem",
-        }}
-      >
-        What actually happens
-        <br />
-        when you click a link
-        <br />
-        in React?
-      </h1>
-      <p
-        style={{
-          fontSize: "18px",
-          color: "#666",
-          lineHeight: 1.6,
-          margin: "0 0 2rem",
-        }}
-      >
-        Michi is a client-side router built from first principles - the raw
-        History API, regex pattern matching, and React's useSyncExternalStore.
-        No library abstractions. Every line has a reason.
-      </p>
+    <div style={{ maxWidth: "720px" }}>
+      <div style={{ marginBottom: "3.5rem" }}>
+        <h1
+          style={{
+            fontSize: "clamp(36px, 5vw, 52px)",
+            fontWeight: 800,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.08,
+            margin: "0 0 1rem",
+            color: "var(--ink)",
+            textWrap: "balance",
+          }}
+        >
+          What actually happens
+          <br />
+          when you click a link
+          <br />
+          <span style={{ color: "var(--accent)" }}>in React?</span>
+        </h1>
+        <p
+          style={{
+            fontSize: "17px",
+            color: "var(--ink-muted)",
+            lineHeight: 1.65,
+            margin: 0,
+            maxWidth: "540px",
+          }}
+        >
+          Michi is a client-side router built from first principles - the raw
+          History API, regex pattern matching, and React's useSyncExternalStore.
+          No library abstractions. Every line has a reason.
+        </p>
+      </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         {features.map((f) => (
           <Link
             key={f.to}
             to={f.to}
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "1rem 1.25rem",
-              border: "1px solid #e8e4df",
-              borderRadius: "8px",
-              textDecoration: "none",
-              color: "inherit",
-              transition: "border-color 0.15s",
+            style={featureCardStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.boxShadow =
+                "0 1px 3px rgba(194, 120, 50, 0.08)";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border-subtle)";
+              e.currentTarget.style.boxShadow = "none";
+              e.currentTarget.style.transform = "translateY(0)";
             }}
           >
             <div>
               <div
                 style={{
                   fontWeight: 600,
-                  fontSize: "15px",
+                  fontSize: "14px",
                   marginBottom: "2px",
+                  color: "var(--ink)",
                 }}
               >
                 {f.title}
               </div>
-              <div style={{ fontSize: "13px", color: "#888" }}>{f.desc}</div>
+              <div style={{ fontSize: "13px", color: "var(--ink-muted)" }}>
+                {f.desc}
+              </div>
             </div>
-            <span
-              style={{
-                fontSize: "12px",
-                color: "#aaa",
-                fontFamily: "monospace",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {f.tag}
-            </span>
+            <span style={tagStyle}>{f.tag}</span>
           </Link>
         ))}
       </div>

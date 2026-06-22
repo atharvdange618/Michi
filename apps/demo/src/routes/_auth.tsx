@@ -1,24 +1,34 @@
+import type { CSSProperties } from "react";
 import { Outlet } from "michi";
+
+const badgeStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  marginBottom: "1rem",
+  fontSize: "12px",
+  fontFamily: "'Geist Mono', monospace",
+  color: "var(--green)",
+  padding: "3px 10px",
+  background: "var(--surface)",
+  border: "1px solid var(--green-border)",
+  borderRadius: "4px",
+};
 
 export default function AuthLayout() {
   return (
     <div
       style={{
-        border: "2px dashed #4ade80",
-        borderRadius: "8px",
-        padding: "1rem",
+        border: "1px solid var(--green-border)",
+        borderRadius: "var(--radius-lg)",
+        padding: "1.25rem",
+        background: "var(--green-soft)",
       }}
     >
-      <p
-        style={{
-          margin: "0 0 0.75rem",
-          fontSize: "12px",
-          fontFamily: "monospace",
-          color: "#4ade80",
-        }}
-      >
+      <div style={badgeStyle}>
+        <span style={{ fontSize: "12px" }}>&#9679;</span>
         _auth layout - pathless, adds no URL segment
-      </p>
+      </div>
       <Outlet />
     </div>
   );
