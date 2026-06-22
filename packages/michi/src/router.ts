@@ -61,16 +61,11 @@ export class Router {
       this.notify();
     }, pendingMs);
 
-    await this.commitNavigation(
-      location,
-      pendingMatches,
-      navId,
-      {
-        timer: pendingTimer,
-        info: pendingInfo,
-        minDisplayMs: pendingMinMs,
-      },
-    );
+    await this.commitNavigation(location, pendingMatches, navId, {
+      timer: pendingTimer,
+      info: pendingInfo,
+      minDisplayMs: pendingMinMs,
+    });
   }
 
   private async commitNavigation(
