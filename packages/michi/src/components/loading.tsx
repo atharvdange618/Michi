@@ -1,5 +1,17 @@
 import { useEffect, useState } from "react";
 
+const containerStyle: React.CSSProperties = {
+  minHeight: "100vh",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  fontFamily: "system-ui, -apple-system, sans-serif",
+  color: "#1a1a1a",
+  background: "#faf8f5",
+  userSelect: "none",
+};
+
 export function Loading() {
   const [dots, setDots] = useState("");
 
@@ -11,19 +23,7 @@ export function Loading() {
   }, []);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        fontFamily: "system-ui, -apple-system, sans-serif",
-        color: "#1a1a1a",
-        background: "#faf8f5",
-        userSelect: "none",
-      }}
-    >
+    <div style={containerStyle}>
       <div
         style={{
           width: "32px",
