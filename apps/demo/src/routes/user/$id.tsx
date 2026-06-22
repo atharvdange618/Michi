@@ -9,63 +9,103 @@ export default function UserPage() {
   const user = useLoaderData<User>();
 
   return (
-    <div style={{ maxWidth: "640px" }}>
+    <div style={{ maxWidth: "720px" }}>
       <h1
         style={{
-          fontSize: "32px",
+          fontSize: "clamp(28px, 4vw, 36px)",
           fontWeight: 800,
-          letterSpacing: "-1px",
+          letterSpacing: "-0.03em",
+          lineHeight: 1.1,
           margin: "0 0 0.5rem",
         }}
       >
         User Profile
       </h1>
-      <p style={{ fontSize: "15px", color: "#666", margin: "0 0 1.5rem" }}>
+      <p
+        style={{
+          fontSize: "15px",
+          color: "var(--ink-muted)",
+          margin: "0 0 2rem",
+          maxWidth: "50ch",
+        }}
+      >
         This page uses a <code>loader</code> + <code>useLoaderData()</code> to
-        fetch user data before rendering. The loader runs during navigation,
-        and the component receives the resolved data.
+        fetch user data before rendering. The loader runs during navigation, and
+        the component receives the resolved data.
       </p>
 
       <div
         style={{
-          border: "1px solid #e8e4df",
-          borderRadius: "8px",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
           overflow: "hidden",
           marginBottom: "1.5rem",
+          background: "var(--surface)",
         }}
       >
         <div
           style={{
-            padding: "1.25rem",
-            background: "#f3f0eb",
-            borderBottom: "1px solid #e8e4df",
+            padding: "1.25rem 1.5rem",
+            background: "var(--bg-raised)",
+            borderBottom: "1px solid var(--border-subtle)",
           }}
         >
-          <div style={{ fontSize: "13px", color: "#888", marginBottom: "0.25rem" }}>
+          <div
+            style={{
+              fontSize: "12px",
+              fontFamily: "'Geist Mono', monospace",
+              color: "var(--ink-faint)",
+              marginBottom: "6px",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+            }}
+          >
             fetched via loader
           </div>
-          <div style={{ fontSize: "20px", fontWeight: 700, letterSpacing: "-0.5px" }}>
+          <div
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+            }}
+          >
             {user.name}
           </div>
-          <div style={{ fontSize: "14px", color: "#666", marginTop: "2px" }}>
+          <div
+            style={{
+              fontSize: "14px",
+              color: "var(--ink-muted)",
+              marginTop: "2px",
+            }}
+          >
             {user.email}
           </div>
         </div>
 
-        <div style={{ padding: "1.25rem" }}>
-          <div style={{ fontSize: "13px", color: "#888", marginBottom: "0.5rem" }}>
+        <div style={{ padding: "1.25rem 1.5rem" }}>
+          <div
+            style={{
+              fontSize: "12px",
+              fontFamily: "'Geist Mono', monospace",
+              color: "var(--ink-faint)",
+              marginBottom: "8px",
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+            }}
+          >
             loader output
           </div>
           <pre
             style={{
-              fontFamily: "monospace",
+              fontFamily: "'Geist Mono', monospace",
               fontSize: "13px",
               lineHeight: 1.8,
               margin: 0,
               whiteSpace: "pre-wrap",
+              color: "var(--ink-muted)",
             }}
           >
-{`{
+            {`{
   id: "${user.id}",
   name: "${user.name}",
   email: "${user.email}"
@@ -76,26 +116,30 @@ export default function UserPage() {
 
       <div
         style={{
-          fontFamily: "monospace",
+          fontFamily: "'Geist Mono', monospace",
           fontSize: "13px",
-          padding: "1rem",
-          background: "#f3f0eb",
-          borderRadius: "6px",
+          padding: "1rem 1.25rem",
+          background: "var(--bg-raised)",
+          borderRadius: "var(--radius)",
           lineHeight: 1.8,
+          border: "1px solid var(--border-subtle)",
         }}
       >
         <div>
-          <span style={{ color: "#888" }}>route pattern:</span> /user/$id
+          <span style={{ color: "var(--ink-faint)" }}>route pattern:</span>{" "}
+          /user/$id
         </div>
         <div>
-          <span style={{ color: "#888" }}>actual URL: </span> /user/{user.id}
+          <span style={{ color: "var(--ink-faint)" }}>actual URL: </span> /user/
+          {user.id}
         </div>
         <div>
-          <span style={{ color: "#888" }}>loader: </span>{" "}
+          <span style={{ color: "var(--ink-faint)" }}>loader: </span>{" "}
           fetchUser(params.id) &rarr; User object
         </div>
         <div>
-          <span style={{ color: "#888" }}>hook: </span> useLoaderData&lt;User&gt;()
+          <span style={{ color: "var(--ink-faint)" }}>hook: </span>{" "}
+          useLoaderData&lt;User&gt;()
         </div>
       </div>
     </div>
