@@ -81,6 +81,7 @@ export function matchTree(
         loaderData: undefined,
         loader: route.loader,
         component: route.component,
+        errorComponent: route.errorComponent,
       };
 
       if (route.children?.length) {
@@ -118,6 +119,7 @@ export function matchTree(
           loaderData: undefined,
           loader: route.loader,
           component: route.component,
+          errorComponent: route.errorComponent,
         };
         return [layoutMatch, ...childMatches];
       }
@@ -133,6 +135,7 @@ export function matchTree(
           loaderData: undefined,
           loader: route.loader,
           component: route.component,
+          errorComponent: route.errorComponent,
         },
       ];
     }
