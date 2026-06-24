@@ -68,12 +68,11 @@ export default function AboutPage() {
             maxWidth: "60ch",
           }}
         >
-          Michi (道) is a client-side router for React, built from first
-          principles. No routing libraries, no framework abstractions - just the
-          raw History API, regex pattern matching, and React's{" "}
-          <code>useSyncExternalStore</code>. It's not trying to replace React
-          Router or TanStack Router. It's here to answer the question: what
-          actually happens between the click and the render?
+          Michi (道) is a client-side router for React, built from first principles. No routing
+          libraries, no framework abstractions - just the raw History API, regex pattern matching,
+          and React's <code>useSyncExternalStore</code>. It's not trying to replace React Router or
+          TanStack Router. It's here to answer the question: what actually happens between the click
+          and the render?
         </p>
       </section>
 
@@ -97,14 +96,12 @@ export default function AboutPage() {
             maxWidth: "60ch",
           }}
         >
-          I've used React Router and TanStack Router in production for years.
-          They work great. But I never really understood <em>how</em> they work
-          - not the API or docs-level understanding, but the actual internals.
-          What happens between the click and the render. How does the URL change
-          without a page reload. How does a pattern like <code>/user/$id</code>{" "}
-          turn into something that actually matches <code>/user/atharv</code>.
-          What keeps two components from seeing different URLs in the same
-          render pass.
+          I've used React Router and TanStack Router in production for years. They work great. But I
+          never really understood <em>how</em> they work - not the API or docs-level understanding,
+          but the actual internals. What happens between the click and the render. How does the URL
+          change without a page reload. How does a pattern like <code>/user/$id</code> turn into
+          something that actually matches <code>/user/atharv</code>. What keeps two components from
+          seeing different URLs in the same render pass.
         </p>
         <p
           style={{
@@ -115,10 +112,9 @@ export default function AboutPage() {
             maxWidth: "60ch",
           }}
         >
-          So I started building one. Michi follows the same spirit as my other
-          deep-dive projects - the code teaches, the README/Blog explains the
-          why. Each feature is built as a self-contained slice that answers a
-          specific question about how routing works.
+          So I started building one. Michi follows the same spirit as my other deep-dive projects -
+          the code teaches, the README/Blog explains the why. Each feature is built as a
+          self-contained slice that answers a specific question about how routing works.
         </p>
         <div
           style={{
@@ -199,8 +195,8 @@ export default function AboutPage() {
             maxWidth: "60ch",
           }}
         >
-          Each slice of Michi has a corresponding blog post that walks through
-          the implementation from first principles.
+          Each slice of Michi has a corresponding blog post that walks through the implementation
+          from first principles.
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <a
@@ -306,9 +302,9 @@ export default function AboutPage() {
             maxWidth: "60ch",
           }}
         >
-          道 (michi) is Japanese for "path" or "the way." Seemed fitting for a
-          project about understanding how routing works - the path between a URL
-          change and what renders on screen.
+          道 (michi) is Japanese for "path" or "the way." Seemed fitting for a project about
+          understanding how routing works - the path between a URL change and what renders on
+          screen.
         </p>
       </section>
 

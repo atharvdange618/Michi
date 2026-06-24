@@ -33,9 +33,7 @@ export function useSEO({
     const twitterTitle = document.querySelector('meta[name="twitter:title"]');
     if (twitterTitle) twitterTitle.setAttribute("content", fullTitle);
 
-    const twitterDesc = document.querySelector(
-      'meta[name="twitter:description"]',
-    );
+    const twitterDesc = document.querySelector('meta[name="twitter:description"]');
     if (twitterDesc) twitterDesc.setAttribute("content", description);
 
     const canonical = document.querySelector("link[rel='canonical']");
