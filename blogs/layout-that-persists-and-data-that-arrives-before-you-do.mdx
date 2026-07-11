@@ -14,11 +14,12 @@ tags:
 
 featured: true
 description: "Continuing to build a client-side router from scratch. This post covers what happens after the basics: how nested routes keep your navbar mounted across navigations, why the Outlet pattern is just a context counter, and how data loaders flip fetch-on-render into render-as-you-fetch with parallel execution and race condition guards."
+summary: "Continuing the client-side router build from scratch. Nested routes use an Outlet pattern backed by React context to keep parent layouts mounted across navigations. Data loaders flip the model from fetch-on-render to render-as-you-fetch, running parallel requests with promise.all and guarding against stale responses with race condition handling."
 ---
 
 In the [previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react), we built the foundation: the History API changes URLs without reloads, route patterns compile into regex, and `useSyncExternalStore` bridges the router's external state into React's render cycle without tearing. That works. But it has a problem.
 
-Every page renders in isolation. Navigate to `/about` and you get the About component. Navigate to `/user/atharv` and you get the User component. Nothing shared between them. The moment you want a navbar that stays alive across navigations, a sidebar that persists, or data that arrives before the component mounts, the flat architecture breaks.
+Every page renders in isolation. Navigate to `/about`, you get the About component. Navigate to `/user/atharv`, you get the User component. Nothing shared between them. The moment you want a navbar that stays alive across navigations, a sidebar that persists, or data that arrives before the component mounts, the flat architecture breaks down.
 
 This post covers slices 3 and 4 of [Michi](https://github.com/atharvdange618/Michi): how nested routes give you persistent layouts through a tree structure instead of a flat list, and how data loaders flip the fetch-on-render pattern into render-as-you-fetch so your components always have data on first paint.
 
@@ -62,7 +63,7 @@ new Router([
 ]);
 ```
 
-A single line changed: `children`. The root layout wraps everything. When you navigate to `/about`, the router does not just find the About component. It finds the root layout AND the About component. Two matches, not one.
+One line changed: `children`. The root layout wraps everything. When you navigate to `/about`, the router finds the root layout and the About component, not just the About component alone. Two matches, not one.
 
 ```ascii
 Flat List                          Tree
@@ -86,7 +87,7 @@ export function matchTree(
 ): RouteMatch[] {
 ```
 
-Here is what trips people up. The route definitions are a tree, but the matched result is a flat array. Why? Because React renders top to bottom, linearly. The tree structure is just for configuration. Once matching is done, you flatten it into an ordered list: root first, then the matched child. That flat array is what `<Outlet />` walks through.
+A common confusion: the route definitions are a tree, but the matched result is a flat array. Why? Because React renders top to bottom, linearly. The tree structure is just for configuration. Once matching is done, you flatten it into an ordered list: root first, then the matched child. That flat array is what `<Outlet />` walks through.
 
 ```ts
   for (const route of routes) {
@@ -117,7 +118,7 @@ Layout routes get special treatment. Any path starting with `_` is a layout rout
 
 After building the layout match, `matchTree` recurses into children with the same pathname. Whatever comes back gets spread after the layout match. So if the pathname is `/about`, the recursive call returns `[{ routeId: '/about', ... }]`, and the final result is `[layoutMatch, aboutMatch]`.
 
-There is a key distinction here. `__root` always contributes to the match chain. It is the outermost shell - it must always render. But other layout routes (`_auth`, `_dashboard`, etc.) only contribute when a descendant actually matches. If no child matches, the layout is skipped via `continue`, letting sibling routes try.
+`__root` always contributes to the match chain. It is the outermost shell: it must always render. But other layout routes (`_auth`, `_dashboard`, etc.) only contribute when a descendant actually matches. If no child matches, the layout is skipped via `continue`, letting sibling routes try.
 
 ```ts
     // regular route with children: acts as a layout for its children
@@ -152,7 +153,7 @@ There is a key distinction here. `__root` always contributes to the match chain.
 }
 ```
 
-For regular routes with children, the logic checks children first. If a child matches, the parent acts as a layout wrapper. If no child matches, the route falls through to its own leaf matching. A single route definition can serve as both a layout and a page, depending on whether its children match the URL.
+For regular routes with children, the logic checks children first. If a child matches, the parent acts as a layout wrapper. If no child matches, the route falls through to its own leaf matching. A single route definition can serve as both a layout and a page depending on what URL is being matched.
 
 Navigate to `/settings/profile`:
 
@@ -197,7 +198,7 @@ export function Outlet({
 
 It reads a number from context, uses that number to index into `state.matches`, and renders whatever component is at that index. Then it bumps the number by one for any nested Outlet below it.
 
-That is it. No magic, no diffing, no special React behavior. It is a context consumer that does an array lookup.
+No magic, no diffing, no special React behavior. It is a context consumer that does an array lookup.
 
 <Callout type="info">
   **Outlet is just a depth counter.** The entire nesting mechanism is a single
@@ -206,7 +207,7 @@ That is it. No magic, no diffing, no special React behavior. It is a context con
   special reconciler hooks, no framework magic.
 </Callout>
 
-Here is what makes it click. The `OutletContext` holds a single number: the current depth into `state.matches`. `RouterProvider` renders `matches[0]` directly and sets `OutletContext` to `1`. Each `<Outlet />` reads its index, renders that match, and increments for the next level.
+The `OutletContext` holds a single number: the current depth into `state.matches`. `RouterProvider` renders `matches[0]` directly and sets `OutletContext` to `1`. Each `<Outlet />` reads its index, renders that match, and increments for the next level.
 
 ```tsx
 // RouterProvider renders matches[0] and sets context to 1
@@ -244,7 +245,7 @@ state.matches = [
 ];
 ```
 
-`RouterProvider` still renders `matches[0]` which is still `RootLayout`. React sees the same component at the same position in the tree, so it does not remount it. The nav stays alive. Only the Outlet content changes because `matches[1]` is now `UserPage` instead of `AboutPage`.
+`RouterProvider` still renders `matches[0]` which is still `RootLayout`. React sees the same component at the same position in the tree so it does not remount it. The nav stays alive. Only the Outlet content changes because `matches[1]` is now `UserPage` instead of `AboutPage`.
 
 The depth counter in context is what allows this to work at any nesting depth without any component needing to know how deep it is. Each Outlet just knows its own index and the one after it.
 
@@ -264,7 +265,7 @@ function isLayoutRoute(path: string): boolean {
 
 This covers both `__root` (the root layout) and `_auth`, `_dashboard`, etc. (pathless layouts).
 
-This matters because of how layout routes work. Navigate to `/about` with this route tree:
+Why does this matter? Navigate to `/about` with this route tree:
 
 ```ascii
 __root
@@ -275,7 +276,7 @@ __root
 └── /about             (public page)
 ```
 
-The matcher tries `_auth` first. `_auth` has children, so it recurses into them. `/dashboard` does not match `/about`. No child matches. If `_auth` always contributed like `__root` does, it would wrap `/about` in the auth layout - which is wrong. So `_auth` is skipped via `continue`. The matcher continues to `/about`. `/about` matches. Result: `[rootMatch, aboutMatch]`. No auth layout in the chain.
+The matcher tries `_auth` first. `_auth` has children, recurse into them. `/dashboard` does not match `/about`. No child matches. If `_auth` always contributed like `__root` does, it would wrap `/about` in the auth layout, which is wrong. So `_auth` is skipped via `continue`. The matcher continues to `/about`. `/about` matches. Result: `[rootMatch, aboutMatch]`. No auth layout in the chain.
 
 Now navigate to `/dashboard`. `_auth` recurses into children. `/dashboard` matches. `_auth` contributes. Result: `[rootMatch, authMatch, dashboardMatch]`. The auth layout wraps the dashboard.
 
@@ -290,7 +291,7 @@ The fundamental distinction: regular routes are about URL matching. Layout route
 
 ## The Full Chain: Nested Navigation
 
-Here is what happens when you navigate to `/settings/profile`:
+When you navigate to `/settings/profile`:
 
 ```ascii
 Navigate to /settings/profile
@@ -426,7 +427,7 @@ The loader is a named export from the route file, same convention as TanStack Ro
 
 ## useLoaderData: The OutletContext Trick
 
-Here is where the Outlet pattern from Slice 3 becomes essential for more than just layouts.
+The Outlet pattern from Slice 3 becomes essential for more than just layouts.
 
 ```ts
 export function useLoaderData<T = unknown>(): T {
@@ -438,7 +439,7 @@ export function useLoaderData<T = unknown>(): T {
 }
 ```
 
-Here is what makes this clever. `OutletContext` holds the index of the NEXT match to render. When `UserPage` is mounted by an `<Outlet />` at depth `1`, `OutletContext` inside `UserPage` is `2`, because Outlet set it to `matchIndex + 1` before rendering the component.
+This is clever because `OutletContext` holds the index of the NEXT match to render. When `UserPage` is mounted by an `<Outlet />` at depth `1`, `OutletContext` inside `UserPage` is `2`, because Outlet set it to `matchIndex + 1` before rendering the component.
 
 So `useContext(OutletContext) - 1` reverses that. From inside `UserPage`, `OutletContext` is `2`, `2 - 1` is `1`, and `state.matches[1]` is the `UserPage` match with its `loaderData`. Each component can call `useLoaderData()` and get its own route's data regardless of nesting depth.
 
@@ -508,7 +509,7 @@ If the route and its params have not changed, the loader is skipped and the prev
 
 ## The Race Condition Guard
 
-The problem with async loaders: you click Atharv, a 600ms fetch starts. Before it resolves, you click John, another 600ms fetch starts. If John's fetch resolves first, then Atharv's resolves, you would end up showing Atharv's data even though you are on John's URL.
+Async loaders can cause race conditions. You click Atharv, a 600ms fetch starts. Before it resolves, you click John, another 600ms fetch starts. If John's fetch resolves first, then Atharv's resolves, you would end up showing Atharv's data even though you are on John's URL.
 
 The solution is a navigation counter:
 
@@ -575,12 +576,12 @@ John stays on screen. Atharv's result is thrown away. Race condition handled.
   **Every async data fetch is a potential race condition.** If the user
   navigates faster than your loaders resolve, stale data will overwrite fresh
   data unless you guard against it. The navigation counter pattern works for any
-  async operation that produces ordered results - not just routing.
+  async operation that produces ordered results, not just routing.
 </Callout>
 
 ## The Pending Indicator: Avoiding Spinner Flash
 
-Immediately showing a loading state on every navigation creates a problem. If a loader resolves in 50ms, the user never sees the loading state, but React still unmounts the old page, shows a spinner for one frame, then mounts the new page. That flash is jarring.
+Immediately showing a loading state on every navigation can cause spinner flash. If a loader resolves in 50ms, the user never sees the loading state, but React still unmounts the old page, shows a spinner for one frame, then mounts the new page. That flash is jarring.
 
 The solution: do not show the loading indicator immediately. Wait a bit.
 
@@ -615,7 +616,7 @@ Instead of immediately setting `status: "loading"`, we start a 1000ms timer. If 
 
 If the timer fires (loader takes longer than 1000ms), the loading state appears. We also enforce a minimum display time so the spinner does not flash for just 50ms if the loader finishes right after the timer fires.
 
-Here is how `commitNavigation` calculates and enforces that minimum display duration before committing the state:
+`commitNavigation` calculates and enforces that minimum display duration before committing the state:
 
 ```ts
 if (pending?.info.fired) {
@@ -628,7 +629,7 @@ if (pending?.info.fired) {
 }
 ```
 
-This ensures that once a spinner is shown, it stays on screen for at least 500ms, preventing a rapid, jarring flash if the loaders finish right after the timer fires.
+This ensures that once a spinner is shown, it stays on screen for at least 500ms, preventing a rapid, jarring flash if the loaders finish 1010ms after the navigation started.
 
 ```ascii
 Three Scenarios
@@ -652,14 +653,14 @@ Slow loader (2000ms):
   result: loading shown for ~1000ms
 ```
 
-The key insight: the loading state is no longer "start loading immediately." It is "show a loading indicator if the navigation is slow." Fast navigations feel instant. Slow ones get a spinner.
+The loading state is no longer "start loading immediately." It is "show a loading indicator if the navigation is slow." Fast navigations feel instant. Slow ones get a spinner.
 
 <Callout type="info">
   **Threshold-based loading eliminates spinner flash.** A loading indicator that
   appears immediately and disappears in 50ms feels worse than no indicator at
-  all. Delay the loading state by a threshold. If the data arrives before the
-  threshold, the user sees a clean swap. If it is slow, they get a spinner, and
-  it stays visible long enough to not feel like a glitch.
+  all. Delay the loading state by a threshold (typically 200-500ms). If the data
+  arrives before the threshold, the user sees a clean swap. If it is slow, they
+  get a spinner, and it stays visible long enough to not feel like a glitch.
 </Callout>
 
 ## RouterProvider: Three States
@@ -705,11 +706,11 @@ export function RouterProvider({
 }
 ```
 
-Three states. `state.status === "loading" && !rootMatch` is the initial load: no matches yet because loaders have not resolved, so a loading state is shown. `state.status === "error" && !rootMatch` handles loader errors. `rootMatch` existing means normal render. If none of these conditions match, it is a 404.
+Three states. `state.status === "loading" && !rootMatch` is the initial load: no matches yet because loaders have not resolved. Show a loading state. `state.status === "error" && !rootMatch` handles loader errors. `rootMatch` existing means normal render. Neither means 404.
 
 The condition order matters. A 404 also has no rootMatch, but its status is `'idle'` (matching finished, no match found) rather than `'loading'` (still waiting for loaders) or `'error'` (loader threw). That is why the loading check comes first.
 
-During the initial loading phase, `matches` is empty (no loaders have resolved yet). Without a safeguard, rendering the route tree would fail because `useLoaderData()` would return `undefined`. The `loading` prop on `RouterProvider` is your safety net - it renders the loading component instead of the route tree on initial load, ensuring components never mount without data. During subsequent navigations, the router keeps the previous matches on screen, so components remain mounted with their existing data until the new page is ready.
+During the initial loading phase, `matches` is empty (no loaders have resolved yet). Without a safeguard, rendering the route tree would fail because `useLoaderData()` would return `undefined`. The `loading` prop on `RouterProvider` is your safety net: it renders the loading component instead of the route tree on initial load, ensuring components never mount without data. During subsequent navigations, the router keeps the previous matches on screen, so components remain mounted with their existing data until the new page is ready.
 
 ## The Full Chain: Loaders in Action
 
@@ -763,27 +764,27 @@ Every step connects to a line of code. No magic anywhere in the chain.
 
 ## What We Built (And What Is Next)
 
-In two slices, the router went from a flat list of independent pages to a tree of nested layouts with data loading. The core loop from the [previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) did not change - it just got richer. History notifies Router, Router matches routes, React renders components. The matching now walks a tree instead of a flat array. The rendering now uses a depth counter to nest components. The data now arrives before components mount.
+In two slices, the router went from a flat list of independent pages to a tree of nested layouts with data loading. The core loop from the [previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) did not change, it just got richer. History notifies Router, Router matches routes, React renders components. The matching now walks a tree instead of a flat array. The rendering now uses a depth counter to nest components. The data now arrives before components mount.
 
 Coming up: error boundaries for per-route error isolation, prefetching on hover for instant transitions, search params as first-class typed URL state, file-based routing with code generation, and full type safety across the entire route tree.
 
 ## Key Takeaways
 
-**The tree solves ownership, not URLs.** Route nesting is about which layout wraps which pages, not about URL structure. `/settings/profile` is still a full absolute path. Nesting it under `/settings` just says "render inside `SettingsLayout`."
+**The tree solves ownership, not URLs.** Tree nesting controls layout ownership, not URL structure. A nested route like `/settings/profile` remains an absolute path but renders inside `SettingsLayout`.
 
-**matchTree flattens the tree on purpose.** React renders linearly. The tree config becomes a flat array of matches, ordered depth-first. `<Outlet />` walks through this array using a depth counter in context.
+**matchTree flattens the tree on purpose.** React renders linearly. The tree config becomes a flat array of matches, ordered depth-first. Outlet walks through this array using a depth counter in context.
 
-**React's reconciler does the layout stability.** Same component at the same position in the tree means no remount. The router does not do anything special to keep the nav alive - it just ensures `matches[0]` is always `RootLayout`, and React handles the rest.
+**React's reconciler does the layout stability.** Same component at same position means no remount. The router just ensures `matches[0]` is `RootLayout`.
 
 **Loaders run at navigation time, not render time.** The fetch starts when you click the link, not when the component mounts. By the time React renders the page, data is already there. One render, full data.
 
-**`Promise.all` for parallel execution.** All matched route loaders fire simultaneously. You wait for the slowest one, not the sum of all of them.
+**Promise.all for parallel execution.** All matched route loaders fire simultaneously. You wait for the slowest one, not the sum of all of them.
 
-**`navigationId` prevents stale data.** Rapid navigation can result in out-of-order loader resolutions. The counter ensures only the most recent navigation's results get committed to state.
+**navigationId prevents stale data.** Rapid navigation can result in out-of-order loader resolutions. The counter ensures only the most recent navigation's results get committed to state.
 
 **Cache by routeId + params.** If the route and its params have not changed, the loader does not re-run. Navigate from `/user/atharv` to `/user/atharv` and zero network requests fire.
 
-**Show loading UI only when the loader is slow.** Immediate loading state on every navigation causes spinner flash for fast loaders. Wait a threshold. If the loader resolves before it, show nothing. If it is slow, show a spinner - and keep it visible long enough to not feel like a glitch.
+**Show loading UI only when the loader is slow.** Immediate loading state on every navigation causes spinner flash for fast loaders. Wait a threshold. If the loader resolves before it, show nothing. If it is slow, show a spinner and keep it visible long enough to not feel like a glitch.
 
 ---
 
@@ -797,14 +798,13 @@ Everything I learned building slices 3 and 4 came from these. Organized by topic
 
 ### Nested Routes
 
-- [TanStack Router - Routing Concepts](https://tanstack.com/router/v1/docs/routing/routing-concepts): Layout Routes, Pathless Layouts, and the core tree hierarchy
-- [React Router - Routing Guide](https://reactrouter.com/start/data/routing): Nested routing configuration, layout grouping, and Outlets
+- [TanStack Router - Routing Concepts](https://tanstack.com/router/v1/docs/routing/routing-concepts) _(This details Layout Routes, Pathless Layouts, and the core tree hierarchy)_
+- [React Router - Routing Guide](https://reactrouter.com/start/data/routing) _(Covers nested routing configuration, layout grouping, and Outlets)_
 
 ### Data Loaders
 
 - [TanStack Router - Data Loading Guide](https://tanstack.com/router/v1/docs/guide/data-loading)
-- [React Router - Data Loading](https://reactrouter.com/v7/start/framework/data-loading)
-- [Remix docs - Data Loading](https://remix.run/docs/en/main/guides/data-loading)
+- [React Router - Data Loading](https://reactrouter.com/start/framework/data-loading)
 
 ### Race Conditions in Async Operations
 

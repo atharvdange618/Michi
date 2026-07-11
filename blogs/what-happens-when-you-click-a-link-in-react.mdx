@@ -12,11 +12,12 @@ tags:
   - "concurrent-mode"
   - "michi"
 
-featured: "true"
+featured: true
 description: "I'm building a client-side router from scratch to understand what React Router and TanStack Router do under the hood. This post walks through what I've found so far: the History API that makes navigation work without reloads, why useState breaks in concurrent mode, how route patterns become regex, and the `useSyncExternalStore` hook that ties it all together."
+summary: "I built a client-side router from scratch to understand TanStack and React Router internals. The History API changes URLs without page reloads. Route patterns get compiled into regex for matching. useState breaks in concurrent mode because it can tear across renders. useSyncExternalStore is the hook that solves this by subscribing to the router's external state and guaranteeing consistency."
 ---
 
-I've used React Router and TanStack Router in production for last 1-2 years. They work great. But I never really understood _how_ they work. Not the API, not the docs-level understanding - the actual internals. What happens between the click and the render. How does the URL change without a reload. How does a pattern like `/user/$id` turn into something that actually matches `/user/atharv`. What keeps two components from seeing different URLs in the same render pass.
+I've used React Router and TanStack Router in production for last 1-2 years. They work great. But I never really understood _how_ they work. The internals underneath all of it. What happens between the click and the render. How does the URL change without a reload. How does a pattern like `/user/$id` turn into something that actually matches `/user/atharv`. What keeps two components from seeing different URLs in the same render pass.
 
 So I started building one. [Michi](https://github.com/atharvdange618/Michi) is a client-side router from scratch - same spirit as React Router and TanStack Router, but stripped down to the essentials. TypeScript, the browser's History API, and React's `useSyncExternalStore`. No magic, no abstraction hiding. Just enough code that every line has a reason.
 
@@ -54,7 +55,7 @@ React initializes from scratch
 
 Client-side routing breaks this cycle entirely. The page never unloads. React keeps running. The URL changes but no HTTP request goes out. You are not asking the librarian for a new book at all. You are just flipping to a different chapter.
 
-To pull this off, you need to understand one browser API that makes it all possible.
+To pull this off, you need one browser API.
 
 ## The History API
 
@@ -95,7 +96,7 @@ Another place `replaceState` shines: URL updates that are not conceptually new p
 
 ### The popstate Quirk
 
-Here is the thing that catches everyone the first time. The browser has a `popstate` event that fires when the URL changes. Sounds perfect, right? Listen to it, re-render when it fires.
+The browser has a `popstate` event that fires when the URL changes. Sounds perfect, right? Listen to it, re-render when it fires.
 
 The problem is `popstate` does NOT fire when you call `pushState` or `replaceState` yourself. It only fires when the user navigates through existing history using the browser's back and forward buttons. (One edge case: some older browsers fire `popstate` on initial page load. A robust router handles this by checking `location.pathname` at initialization.)
 
@@ -127,7 +128,7 @@ After every `pushState` call, you call `notify()` yourself. After every `popstat
 
 ## The Core Router Loop
 
-Once you have History solved, the router's job is to listen for those notifications and update what React renders. This is the loop at the heart of every client-side router:
+Once you have History solved, the router's job is to listen for those notifications and update what React renders. This is the loop every client-side router runs:
 
 ```ascii
 The Core Router Loop
@@ -159,7 +160,7 @@ React re-renders RouterProvider
 New page component renders on screen
 ```
 
-It is a one-way chain. Nothing in this loop talks back up. History does not know about the Router. The Router does not know about React. React does not know about History. Each layer notifies the one below it. That separation is what makes the system clean to reason about and extend.
+It is a one-way chain. Nothing in this loop talks back up. History does not know about the Router. The Router does not know about React. React does not know about History. Each layer notifies the one below it. That separation keeps the system clean and easy to extend.
 
 The `<Link>` component is where this all starts on a user click:
 
@@ -175,13 +176,13 @@ The `<Link>` component is where this all starts on a user click:
 </a>
 ```
 
-`e.preventDefault()` is literally the answer to "how does it not reload." The browser's default behavior for an anchor click is a full page navigation. `preventDefault` cancels it entirely. Then `router.navigate(to)` kicks off the chain.
+`e.preventDefault()` is the answer to "how does it not reload." The browser's default behavior for an anchor click is a full page navigation. `preventDefault` cancels it entirely. Then `router.navigate(to)` kicks off the chain.
 
-One thing worth noting: keeping `href={to}` even though we prevent the default matters. Right-click and "open in new tab" still works. Screen readers can read the destination. Search engine crawlers can follow the link. If you did this with a `<div onClick>` instead of an `<a>`, you'd break all of that. This isn't just best practice - it's a WCAG accessibility requirement for interactive elements.
+One thing worth noting: keeping `href={to}` even though we prevent the default matters. Right-click and "open in new tab" still works. Screen readers can read the destination. Search engine crawlers can follow the link. If you did this with a `<div onClick>` instead of an `<a>`, you'd break all of that. This is a WCAG accessibility requirement for interactive elements.
 
 ## Wiring It to React
 
-Here is where things get interesting. The Router is a plain TypeScript class sitting completely outside React. React has no idea when its internal state changes. You need a bridge.
+The Router is a plain TypeScript class sitting completely outside React. React has no idea when its internal state changes. You need a bridge.
 
 The naive approach most people reach for first:
 
@@ -197,7 +198,7 @@ function RouterProvider({ router }) {
 }
 ```
 
-This looks fine. It even works, mostly. But it has two real problems.
+It looks fine. It mostly works. But it has two real problems.
 
 The first is a subscription gap. `useEffect` runs after React finishes painting to the screen. There is a window between when the component first renders and when the subscription actually gets registered. If the router state changes in that gap, you miss it entirely. Your UI is out of sync with the router.
 
@@ -205,7 +206,7 @@ The second is tearing, and this is the one that actually matters in React 18.
 
 ## UI Tearing in Concurrent Mode
 
-React 18 introduced concurrent rendering. React can now pause a render halfway through, do something else, and come back to finish it. This is what enables features like transitions and Suspense, and it is genuinely good for performance.
+React 18 introduced concurrent rendering. React can now pause a render halfway through, do something else, and come back to finish it. This is what enables features like transitions and Suspense, and it is good for performance.
 
 But it creates a problem with external stores. Imagine this sequence:
 
@@ -248,7 +249,7 @@ The `useState + useEffect` approach has zero protection against this because Rea
 
 ## The Right Solution: useSyncExternalStore
 
-React 18 shipped a hook specifically for this: `useSyncExternalStore`. The "sync" part is the key. It forces React to read the store synchronously during the render and guarantees every component in the same render pass gets the same snapshot.
+React 18 shipped a hook for this: `useSyncExternalStore`. It forces React to read the store synchronously during the render, guaranteeing every component in the same render pass gets the same snapshot.
 
 ```tsx
 const state = useSyncExternalStore(
@@ -260,11 +261,11 @@ const state = useSyncExternalStore(
 
 Three arguments. First, a subscribe function that registers React's internal callback with the store. Second, a getSnapshot function that returns the current state, called synchronously during every render. Third, the initial snapshot used during server-side rendering (SSR) - when React renders on the server, there is no subscribe function, so React falls back to this value. For a client-only router, it returns the same thing as the second argument.
 
-`useSyncExternalStore` ships with React 18. If you need to support React 17, use the `use-sync-external-store` shim package - it provides the same API with a drop-in replacement.
+`useSyncExternalStore` ships with React 18. If you need React 17, the `use-sync-external-store` shim provides the same API.
 
 Internally, React reads the snapshot at the start of a render, renders all your components, then reads the snapshot again at the end. If it changed mid-render, React throws away the entire render and starts over with the new snapshot. Tearing becomes impossible by design.
 
-One critical constraint: `getSnapshot` must return the same reference if nothing changed. Not a new object with the same values. The exact same reference. React uses `Object.is` for comparison. If you returned `{ ...router.getState() }` every time, you would create a new object on every call, React would always think the state changed, and you would have an infinite re-render loop.
+One critical constraint: `getSnapshot` must return the same reference if nothing changed. Not a new object with the same values. The same reference. React uses `Object.is` for comparison. If you returned `{ ...router.getState() }` every time, you would create a new object on every call, React would always think the state changed, and you would have an infinite re-render loop.
 
 In our router, `this.state` is only replaced with a new object when the URL actually changes. The same reference comes back from `getState()` on every call in between. That stability is what makes `useSyncExternalStore` work correctly.
 
@@ -322,11 +323,11 @@ Result:
 }
 ```
 
-The capture group `([^/]+)` means "capture one or more characters that are not a forward slash." It grabs exactly one path segment. For `/user/atharv`, it captures `atharv`. For `/user/atharv/settings`, the slash stops it at `atharv`. Each placeholder maps to exactly one segment. If you need multi-segment wildcards - like `/files/*` matching `/files/a/b/c` - you'd use `(.*)` instead of `([^/]+)`, which captures everything including slashes.
+It grabs exactly one path segment. For `/user/atharv`, it captures `atharv`. For `/user/atharv/settings`, the slash stops it at `atharv`. Each placeholder maps to exactly one segment. Multi-segment wildcards like `/files/*` matching `/files/a/b/c` use `(.*)` instead, which captures everything including slashes.
 
 The `^` and `$` anchors are not optional. Without them, the pattern `/about` would match `/about/extra` because the regex would find `/about` as a substring. With anchors, the entire URL must match start to finish.
 
-When the regex matches, the captured values come back as an array. `match[0]` is always the full matched string. Captured groups start at `match[1]`. Since `paramNames` is built in the same order as the capture groups, you pair them up by index:
+When the regex matches, the captured values come back as an array. `match[0]` is the full matched string. Captured groups start at `match[1]`. Pair them with `paramNames` by index:
 
 ```ts
 paramNames.forEach((name, i) => {
@@ -337,7 +338,7 @@ paramNames.forEach((name, i) => {
 
 ### Why Route Order Matters
 
-The matching loop tries routes in order and returns the first match. This is a design decision, not a limitation. It gives you explicit control but it has one sharp edge:
+The matching loop tries routes in order and returns the first match. This is deliberate - it gives you explicit control, but it has one sharp edge:
 
 ```ts
 new Router([
@@ -362,8 +363,8 @@ This is the same behavior as TanStack Router and React Router. It is not a bug, 
 <Callout type="warning">
   **The route order trap:** If you put `/user/$id` before `/user/settings`, the
   dynamic route will match first and `SettingsPage` will never render. Always
-  declare static routes before dynamic ones. This is the single most common
-  routing bug in custom routers.
+  declare static routes before dynamic ones. This is the most common routing bug
+  in custom routers.
 </Callout>
 
 ## The Full Chain, End to End
@@ -421,21 +422,21 @@ Navigation to /user/atharv
 15. { id: 'atharv' } → "Hello, atharv" on screen
 ```
 
-Every step connects to a line of code. No magic anywhere in the chain.
+Every step connects to a line of code.
 
 ## What's Next
 
-This is the foundation. The core loop - History notifies Router, Router matches route, React renders component - does not change as the router grows. It just gets richer. Coming up: nested routes with layout inheritance, data loaders that block rendering until data arrives, prefetching for instant transitions, search params as first-class citizens, and how to type-safe the entire route tree so your params are never `string` when they should be `number`.
+This is the foundation. The core loop - History notifies Router, Router matches route, React renders component - does not change as the router grows. Coming up: nested routes with layout inheritance, data loaders that block rendering until data arrives, prefetching for instant transitions, search params as first-class citizens, and how to type-safe the entire route tree so your params are never `string` when they should be `number`.
 
 ## Key Takeaways
 
 **Rule of thumb for History:** If the user should be able to press Back to get here, use `pushState`. If Back should skip over this URL (redirects, search-as-you-type), use `replaceState`.
 
-**The popstate trap:** `popstate` only fires on browser back/forward, never on your own `pushState` calls. After every programmatic navigation, call your router's notify function manually - that's the only way both paths stay in sync.
+**The popstate trap:** `popstate` only fires on browser back/forward. After every programmatic navigation, call your router's notify manually. That is how both paths stay in sync.
 
-**Ditch useState for external stores:** `useState + useEffect` has a subscription gap and exposes you to UI tearing in React 18's concurrent mode. `useSyncExternalStore` was built for exactly this. Use it. If you're on React 17, the `use-sync-external-store` shim gives you the same API.
+**Ditch useState for external stores:** `useState + useEffect` has a subscription gap and tears in React 18 concurrent mode. Use `useSyncExternalStore` instead. React 17 users can grab the `use-sync-external-store` shim.
 
-**Route order = resolution order.** The first matching route wins. Put specific routes (`/user/settings`) before dynamic ones (`/user/$id`). This is deliberate, not a limitation - it gives you explicit control without magic.
+**Route order equals resolution order.** The first matching route wins. Put specific routes (`/user/settings`) before dynamic ones (`/user/$id`). This is deliberate, it gives you explicit control over resolution.
 
 **Accessibility isn't optional.** Always render an `<a>` tag with `href`, even if you `preventDefault` on click. Screen readers, keyboard users, and crawlers all depend on it. A `<div onClick>` is not a link.
 
@@ -443,7 +444,7 @@ This is the foundation. The core loop - History notifies Router, Router matches 
 
 ## References
 
-Everything I learned building slices 1 and 2 came from these. Organized by topic if you want to go deeper.
+Everything I learned building slices 1 and 2 came from these, organized by topic.
 
 ### Michi
 
