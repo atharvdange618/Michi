@@ -1,0 +1,477 @@
+---
+title: "Per-Route Error Boundaries and Prefetch on Hover"
+publishedAt: "2026-06-20"
+tags:
+  - "react"
+  - "routing"
+  - "error-boundaries"
+  - "prefetching"
+  - "typescript"
+  - "client-side-routing"
+  - "react-context"
+  - "getDerivedStateFromError"
+  - "michi"
+
+featured: true
+description: "Two problems that show up once a router has real users hitting it: what happens when one route breaks, and what happens while a user is deciding whether to click. This post covers building per-route error boundaries with two separate error channels, and prefetch on hover that reuses the exact same loader pipeline instead of building a second one."
+summary: "Continuing the Michi router series - after building the core navigation loop (slice 1-2), nested layouts with Outlet, and data loaders with parallel execution (slice 3-4), this post tackles what happens when things break and how to make them feel faster. Loader errors and render errors are structurally different failures that need separate catching mechanisms, but both slot into the same Outlet tree. Prefetch reuses the exact same matchTree and runLoaders pipeline from the data loading post - caching the promise itself means repeated hovers are a no-op, and a debounced mouseenter filters accidental cursor passes."
+---
+
+The [previous post](https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do) covered nested layouts and data loaders: how a persistent navbar survives navigation, and how `useLoaderData()` gets data onto the screen before the component even mounts. That's the happy path. This post covers what happens when the happy path breaks, and how to make the happy path feel faster than it actually is.
+
+Slice 5 asks: what happens when a loader throws, or a component crashes mid-render? Right now in [Michi](https://github.com/atharvdange618/Michi), the answer is "everything goes down." One broken `/user/$id` loader wipes out the entire `RouterState`, which means the root layout disappears too, nav and footer included, even though nothing about them actually failed.
+
+Slice 6 asks a different kind of question: by the time a user clicks a link, how much of the work could already be done? A cursor sitting on top of a link for half a second is free information. If the loader starts running the moment the hover begins instead of the moment the click lands, the click can feel instant.
+
+Both slices share something in common with everything built so far: neither introduces a parallel system. Error boundaries slot into the exact same `<Outlet />` tree that already exists. Prefetch reuses the exact same `matchTree` + `runLoaders` pipeline that real navigation already calls. That's the thread connecting this post to the [previous one](https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do): new capability, same machinery.
+
+## What Happens When a Loader Throws, Right Now
+
+Here's the failure mode before this slice. A loader throws:
+
+```ascii
+Before Error Boundaries
+
+loader() throws
+        |
+        v
+Promise.all rejects (one bad apple spoils the batch)
+        |
+        v
+runLoaders() rejects
+        |
+        v
+commitNavigation's catch block fires
+        |
+        v
+ENTIRE RouterState set to status: 'error'
+        |
+        v
+RouterProvider renders <NotFound />
+        |
+        v
+Root layout gone. Nav gone. Footer gone.
+Everything gone, because of one broken route.
+```
+
+`Promise.all` has a specific behavior worth being precise about: if any promise in the array rejects, the whole call rejects immediately, regardless of whether the other promises would have succeeded. One failing loader in a batch of five takes the other four down with it, even though nothing was wrong with them.
+
+The same problem exists on the render side. If a component throws while React is calling it as a function, and nothing catches that exception, React unmounts the tree above it. White screen.
+
+The fix requires recognizing these are two different failures, not one.
+
+## Two Error Channels, Not One
+
+A loader error happens asynchronously, before any component exists. A render error happens synchronously, while React is in the middle of calling a component function.
+
+```ascii
+Loader error timeline                  Render error timeline
+
+navigate() called                      navigate() called
+        |                                       |
+        v                                       v
+matchTree() finds the route            matchTree() finds the route
+        |                                       |
+        v                                       v
+runLoaders() fires                     runLoaders() succeeds (or no loader)
+        |                                       |
+        v                                       v
+loader() throws HERE                   React calls Component() as a function
+        |                                       |
+        v                                       v
+caught in loader.ts try/catch          function body throws HERE
+        |                                       |
+        v                                       v
+attached to match.error                React's renderer intercepts it
+        |                                       |
+        v                                       v
+component never called                 getDerivedStateFromError fires
+        |                                       |
+        v                                       v
+error UI renders from a prop           error UI renders from state
+```
+
+Because these happen at structurally different moments, they need two different catching mechanisms. A `try/catch` around `await loader()` can only ever catch the first kind: it has no visibility into what happens later when React calls the actual component. A React error boundary can only catch the second kind: it explicitly does not catch errors inside async functions or event handlers, by design.
+
+`loader.ts` handles the first channel:
+
+```ts
+try {
+  const loaderData = await match.loader(ctx);
+  return { ...match, loaderData, error: undefined };
+} catch (error) {
+  return { ...match, loaderData: undefined, error };
+}
+```
+
+The `try/catch` moved inside the `.map()` callback itself, wrapping just this one loader call. When it catches, it doesn't rethrow: it returns a normal resolved value, a match object with `error` set instead of `loaderData`. As far as `Promise.all` is concerned, this promise succeeded. It got a value back. Every other loader in the same batch resolves independently.
+
+## Why This Has to Be a Class Component
+
+React Hooks cover almost every class lifecycle method with a functional equivalent: `useState` for `this.state`, `useEffect` for `componentDidMount`. Two methods were deliberately never given hook equivalents: `getDerivedStateFromError` and `componentDidCatch`.
+
+```tsx
+class RouteErrorBoundary extends Component<
+  RouteErrorBoundaryProps,
+  RouteErrorBoundaryState
+> {
+  state: RouteErrorBoundaryState = { renderError: undefined };
+
+  static getDerivedStateFromError(error: unknown): RouteErrorBoundaryState {
+    return { renderError: error };
+  }
+
+  componentDidCatch(error: unknown, errorInfo: ErrorInfo): void {
+    console.error("Michi caught a render error in a route:", error, errorInfo);
+  }
+
+  render(): ReactNode {
+    const error = this.props.error ?? this.state.renderError;
+
+    if (error !== undefined) {
+      const ErrorComponent = this.props.errorComponent ?? DefaultRouteError;
+      return (
+        <RouteErrorContext.Provider value={error}>
+          <ErrorComponent error={error} />
+        </RouteErrorContext.Provider>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+```
+
+`getDerivedStateFromError` is a static method React calls automatically, synchronously, the moment something inside `children` throws during render. There's no hook that can hook into "an exception was thrown somewhere in my subtree." Hooks run as part of your own component's render, not as an interception point for descendants' renders. This is a structural gap in the Hooks API, not an oversight anyone's likely to fill in.
+
+`this.props.error ?? this.state.renderError` reads both channels and picks whichever is present. Loader error takes precedence, which makes sense causally: if the loader already failed, the real page component never got a chance to run, so there's no way `renderError` could be set at the same time anyway.
+
+<Callout type="info">
+  **Two error sources, one boundary.** `RouteErrorBoundary` doesn't care whether
+  an error came from an async loader or a synchronous render: it just reads both
+  possible sources and renders whichever fired. The boundary itself stays
+  simple; the complexity lives in catching the two kinds of errors at their
+  actual origin points, not in reconciling them afterward.
+</Callout>
+
+## Wiring the Boundary Into the Existing Tree
+
+This is where "no parallel system" becomes concrete. `<Outlet />` already existed from Slice 3. It didn't get replaced. It got a boundary wrapped around what it already renders:
+
+```tsx
+export function Outlet({
+  fallback = <NotFound />,
+}: {
+  fallback?: React.ReactNode;
+}) {
+  const matchIndex = useContext(OutletContext);
+  const state = useRouterState();
+  const match = state.matches[matchIndex];
+
+  if (!match) return <>{fallback}</>;
+
+  return (
+    <RouteErrorBoundary
+      key={matchKey(match)}
+      error={match.error}
+      errorComponent={match.errorComponent}
+    >
+      <OutletContext.Provider value={matchIndex + 1}>
+        <match.component />
+      </OutletContext.Provider>
+    </RouteErrorBoundary>
+  );
+}
+```
+
+Every `<Outlet />` in the tree gets its own independent boundary, because every `<Outlet />` renders its own call to this function. Picture the tree shape for `/settings/profile`, where the profile page throws:
+
+```ascii
+RouterProvider
+  RouteErrorBoundary (wraps __root)          <- no error, untouched
+    RootLayout (nav + footer)
+      Outlet
+        RouteErrorBoundary (wraps /settings)  <- no error, untouched
+          SettingsLayout (sidebar)
+            Outlet
+              RouteErrorBoundary (wraps profile) <- CATCHES HERE
+                ProfilePage -> throws
+```
+
+React's algorithm walks up the tree looking for the nearest ancestor that's an error boundary, and stops at the first one it finds. The `/settings/profile` boundary catches it two levels below `RootLayout`, which means `RootLayout`'s nav never re-renders because of this failure. React doesn't walk past the boundary that already handled it.
+
+## Retrying Without Leaving the Route
+
+```tsx
+function matchKey(match: RouteMatch): string {
+  const sorted = Object.keys(match.params)
+    .sort()
+    .reduce(
+      (acc, k) => {
+        acc[k] = match.params[k]!;
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+  return `${match.routeId}:${JSON.stringify(sorted)}`;
+}
+```
+
+The `key` prop on `RouteErrorBoundary` is what resets error state. React's rule: change an element's `key`, and React unmounts the old instance entirely, mounting a fresh one from scratch. For a class component, that means `this.state` resets to its initial value, because it's a genuinely new instance.
+
+`matchKey` produces a string that's identical as long as the route and its params haven't changed, different the moment either one does. Notice the params get sorted before serializing. `{ id: 'a', tab: 'b' }` and `{ tab: 'b', id: 'a' }` need to produce the same key even though object key order differs, otherwise two functionally identical matches could get treated as different ones just because of iteration order.
+
+The loader cache in `loader.ts` reinforces this with one more detail:
+
+```ts
+if (!hasChanged(prev, match) && !prev!.error) {
+  return { ...match, loaderData: prev!.loaderData, error: undefined };
+}
+```
+
+`hasChanged` alone would only trigger a re-run when the route or params actually differ. The `&& !prev!.error` addition means even an _unchanged_ route retries its loader if the last attempt failed. Click the same broken link twice, and the second click gets a fresh attempt: not the leftover error from the first one, and not a requirement to navigate somewhere else first.
+
+## Prefetch: The Other Half of This Post
+
+Error boundaries are about containing failure. Prefetch is about a different question: by the time someone clicks, how much of the work is already finished?
+
+```ascii
+Without prefetch
+
+User clicks
+        |
+        v
+router.navigate() -> history.push() -> handleLocationChange
+        |
+        v
+runLoaders() called - fetch starts HERE, after the click
+        |
+        v
+User waits for the full round trip, every time
+```
+
+The fetch and the user's wait are racing, and the fetch always starts after the click. That means the user experiences the full network latency as a delay, no matter how predictable their navigation was: clicking the same nav link they always click, going to a page they visit ten times a day.
+
+## Not a New Pipeline, the Same One
+
+The tempting wrong approach is a second data-fetching system built specifically for hover. That's wrong because prefetching isn't conceptually different from navigation. It's the exact same operation: "match the route, run its loaders," just triggered by a different event with nowhere to render the result yet.
+
+```ts
+prefetch(to: string): Promise<RouteMatch[]> {
+  const { pathname, search } = splitPath(to)
+  const key = pathname + search
+  return this.prefetchCache.getOrCreate(key, () =>
+    runLoaders(this.match(pathname), this.state.matches),
+  )
+}
+```
+
+`this.match(pathname)` is `matchTree`: the exact function real navigation calls. `runLoaders(...)` is the exact function from Slice 4, hardened with the per-route error catching from Slice 5. Nothing here is new logic. The only genuinely new code is the caching wrapper around it.
+
+<Callout type="warning">
+  **Reusing the pipeline isn't just less code, it's fewer bugs.** Because
+  prefetch runs through the identical `runLoaders` call as real navigation, it
+  automatically inherits parallel loader execution, the `hasChanged` caching
+  from Slice 4, and per-route error isolation from Slice 5, without a single
+  line of prefetch-specific error handling. If a prefetched loader throws, it
+  gets caught exactly the same way a normal navigation's loader error would.
+</Callout>
+
+The consuming side in `handleLocationChange` makes the seam explicit:
+
+```ts
+const cached = this.prefetchCache.peek(key);
+if (cached) this.prefetchCache.delete(key);
+
+const resolvedMatchesPromise = cached
+  ? cached
+  : runLoaders(this.match(location.pathname), this.previousMatches);
+```
+
+`commitNavigation` downstream of this doesn't know or care which branch produced `resolvedMatchesPromise`. It just awaits a `Promise<RouteMatch[]>`, indifferent to whether that promise came from a fresh call or a cache hit that's been resolving in the background for the last half second.
+
+## Caching a Promise, Not Data
+
+```ts
+type CacheEntry = {
+  promise: Promise<RouteMatch[]>;
+  createdAt: number;
+  rejected: boolean;
+};
+```
+
+This is the detail that makes repeated hovers a non-issue. If the cache stored resolved _data_, you'd need separate bookkeeping to handle "a fetch is already in flight, don't start a second one." By storing the _promise itself_, that problem disappears: `await`ing the same promise from two different places is completely normal, and the underlying fetch only ever happens once.
+
+```ts
+getOrCreate(key: string, factory: () => Promise<RouteMatch[]>): Promise<RouteMatch[]> {
+  const cached = this.peek(key)
+  if (cached) return cached
+
+  const promise = factory()
+  const entry: CacheEntry = {
+    promise,
+    createdAt: Date.now(),
+    rejected: false,
+  }
+
+  promise.catch(() => {
+    entry.rejected = true
+  })
+
+  this.entries.set(key, entry)
+  return promise
+}
+```
+
+The first hover creates the promise and stores it. Every subsequent hover, while that fetch is still pending, finds the same promise already in the map and returns it unchanged. `factory()`, the actual `runLoaders` call, only runs once no matter how many times the user hovers.
+
+`promise.catch(...)` does two things at once. First, it prevents the "unhandled promise rejection" warning. Most prefetches go unused: a hover, then the cursor moves elsewhere. If that abandoned prefetch's loader eventually rejects with nothing awaiting it, the JS runtime logs an alarming warning even though nothing is actually broken. Second, and more importantly, it marks the cache entry as `rejected: true`. This means the next call to `peek` for this key will find the entry, see that it failed, delete it, and return `undefined`: a cache miss. A failed prefetch never blocks a real navigation from re-running the loader fresh. If a real navigation does consume the promise before it rejects, the error propagates normally into `commitNavigation`'s existing error handling.
+
+## Intent Detection: Filtering Out Accidental Hovers
+
+A cursor moving across a screen passes over things constantly without the user meaning anything by it. Firing a fetch on every raw `mouseenter` would trigger requests just from someone scrolling or reading.
+
+```tsx
+onMouseEnter={(e) => {
+  if (prefetch === "intent") {
+    hoverTimer.current = setTimeout(() => {
+      router.prefetch(to)
+    }, prefetchDelay)
+  }
+  rest.onMouseEnter?.(e)
+}}
+onMouseLeave={(e) => {
+  if (hoverTimer.current) {
+    clearTimeout(hoverTimer.current)
+    hoverTimer.current = null
+  }
+  rest.onMouseLeave?.(e)
+}}
+```
+
+`mouseenter` doesn't fetch immediately: it starts a 50ms timer. `mouseleave` cancels it if the cursor leaves first. A cursor sweeping past a link on its way somewhere else typically spends a handful of milliseconds over it, nowhere close to 50ms, so it never trips the fetch. A deliberate pause easily clears the threshold.
+
+```ascii
+Fast sweep across the link           Deliberate hover-then-click
+
+mouseenter                            mouseenter
+   |  (8ms later)                        |  (50ms passes, timer fires)
+mouseleave -> timer cancelled         router.prefetch() called
+No fetch happens                         |  (user clicks 400ms later)
+                                       click -> cache already has the answer
+```
+
+One boundary worth being precise about: once the timer fires and the fetch actually starts, `mouseleave` has no power to stop it anymore. There's no cancellation of an in-flight request here. That would need `AbortController` plumbed through the entire loader pipeline for a case that isn't expensive to just let finish. A successful-but-abandoned prefetch sits in the cache and expires naturally via the TTL. A failed one is immediately invalidated by the `rejected` flag, so it never blocks a subsequent navigation from retrying the loader fresh.
+
+## Why the Cache Key Needs Both Path and Search
+
+Picture `/users?page=1` and `/users?page=2`: same route pattern, genuinely different data.
+
+```ts
+export function splitPath(to: string): { pathname: string; search: string } {
+  const idx = to.indexOf("?");
+  if (idx === -1) return { pathname: to, search: "" };
+  return { pathname: to.slice(0, idx), search: to.slice(idx) };
+}
+```
+
+If the cache only keyed on pathname, hovering a link to page 1 would populate the cache under `"/users"`. Hovering a different link to page 2 shortly after would find that existing entry and hand back page 1's data: wrong content under a URL that claims to be page 2. That's not a performance quirk, it's a correctness bug.
+
+```ts
+const key = pathname + search;
+```
+
+`/users?page=1` and `/users?page=2` become distinct keys. Hovering one never contaminates the other's cached entry.
+
+<Callout type="info">
+  **Built ahead of when it's needed.** `matchTree` doesn't use the search string
+  for anything yet: that's Slice 7's job, when typed search params land. Right
+  now, two URLs differing only by search produce identical loader output. But
+  the cache key is correct today, specifically so that once search params start
+  meaningfully affecting what a loader fetches, this file needs zero changes.
+</Callout>
+
+## The Race, End to End
+
+Hover the link, wait past the debounce, then click:
+
+```ascii
+mouseenter fires
+        |
+        v
+hoverTimer starts (50ms)
+        |
+        v
+50ms passes without mouseleave
+        |
+        v
+router.prefetch('/user/atharv') called
+        |
+        v
+matchTree + runLoaders fire - fetchUser('atharv') starts NOW
+        |
+        v
+promise cached under key '/user/atharv'
+        |
+        v
+   ... user is still deciding, or moving the cursor toward the click ...
+        |
+        v
+[fetchUser resolves during this gap, if it's fast enough]
+        |
+        v
+user clicks
+        |
+        v
+handleLocationChange: peek('/user/atharv') -> found, already resolved
+cache entry deleted (consumed)
+        |
+        v
+commitNavigation awaits an already-settled promise - resolves on
+the next microtask, not after another 600ms round trip
+        |
+        v
+UserPage renders with data already there, instantly
+```
+
+Without the hover, `peek` finds nothing, `runLoaders` starts fresh at the moment of the click, and the full fetch time becomes visible latency. The race is between the loader's fetch time and the human time between hover and click. For anything faster than roughly half a second, the fetch usually wins that race quietly, before the user ever notices there was a race at all.
+
+## Key Takeaways
+
+**Loader errors and render errors are different failures with different catching mechanisms.** One happens inside an async function before any component exists; the other happens synchronously while React calls a component. A `try/catch` can only ever catch the first. A React error boundary can only ever catch the second.
+
+**`getDerivedStateFromError` has no hook equivalent, by design.** It's a structural gap in the Hooks API, not an oversight. Any component that needs to catch a descendant's render-time exception has to be a class component.
+
+**Every `<Outlet />` gets its own boundary, which is what makes isolation automatic.** React stops walking up the tree at the first boundary it finds. A failure two levels deep never reaches the layouts above it.
+
+**Changing a `key` is how you reset error state.** React treats a changed key as a brand new element: old instance destroyed, new one mounted with fresh state. `matchKey` changes whenever the route or its params change, which is what makes "navigate away and back" produce a genuinely fresh attempt.
+
+**Prefetch reuses the loader pipeline instead of duplicating it.** `router.prefetch()` calls the exact same `matchTree` and `runLoaders` that real navigation calls. Parallel execution, caching, per-route error handling: all of it comes along for free.
+
+**Cache the promise, not the data.** Storing the in-flight promise means repeated hovers on the same link are a no-op after the first one. Later calls just return the same promise instead of starting a redundant fetch.
+
+**A debounced `mouseenter`/`mouseleave` filters out accidental hovers.** A cursor passing over a link rarely stays long enough to clear a 50ms threshold. A deliberate hover does. Once the fetch has actually started, there's no cancelling it. If it succeeds, it sits in the cache until the TTL clears it. If it fails, the `rejected` flag invalidates it immediately so it never blocks a real navigation from retrying.
+
+**The cache key needs both pathname and search.** Two different searches on the same route pattern are different data. Keying on pathname alone would let one prefetch silently overwrite another's cached result.
+
+---
+
+## References
+
+### Michi
+
+- [Michi GitHub Repository](https://github.com/atharvdange618/Michi)
+
+### Error Boundaries
+
+- [React docs - Catching Rendering Errors with an Error Boundary](https://react.dev/reference/react/Component#catching-rendering-errors-with-an-error-boundary) - the official reference for `getDerivedStateFromError` and `componentDidCatch`
+- [React docs - static getDerivedStateFromError](https://react.dev/reference/react/Component#static-getderivedstatefromerror) - why this method exists and what it can and can't do
+- [React Router - ErrorBoundary](https://reactrouter.com/start/framework/route-module#errorboundary) - React Router's take on the same per-route isolation problem
+
+### Prefetching
+
+- [TanStack Router - Preloading guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading) - intent-based preloading, the pattern this slice is modeled on
+- [MDN - Promise.prototype.catch()](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch) - confirms `.catch()` returns a new derived promise rather than mutating the original
+- [web.dev - Speculative loading](https://web.dev/articles/predictive-prefetching) - the broader web platform context for prefetch-on-intent patterns
+
+---
