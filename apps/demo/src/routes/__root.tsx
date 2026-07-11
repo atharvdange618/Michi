@@ -19,7 +19,10 @@ const structuredData = {
   codeRepository: "https://github.com/atharvdange618/Michi",
 };
 
-const navSections = [
+const navSections: Array<{
+  label: string;
+  links: Array<{ to: string; label: string; prefetch?: "intent" | "none" }>;
+}> = [
   {
     label: "Core",
     links: [
@@ -31,8 +34,8 @@ const navSections = [
   {
     label: "Params",
     links: [
-      { to: "/user/atharv", label: "Atharv" },
-      { to: "/user/maithili", label: "Maithili" },
+      { to: "/user/atharv", label: "Atharv", prefetch: "intent" },
+      { to: "/user/maithili", label: "Maithili", prefetch: "intent" },
       { to: "/showcase/michi", label: "useParams" },
     ],
   },
@@ -51,6 +54,13 @@ const navSections = [
       { to: "/files/public/uploads/report.pdf", label: "Files" },
       { to: "/errors/loader-fail", label: "Loader Fail" },
       { to: "/errors/render-fail", label: "Render Fail" },
+    ],
+  },
+  {
+    label: "Prefetch",
+    links: [
+      { to: "/prefetch", label: "Demo", prefetch: "intent" },
+      { to: "/prefetch-demo?via=hover", label: "Target", prefetch: "intent" },
     ],
   },
 ];
@@ -152,6 +162,7 @@ export default function RootLayout() {
                   <Link
                     key={link.to}
                     to={link.to}
+                    prefetch={link.prefetch}
                     style={navLinkStyle}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.color = "var(--ink)";

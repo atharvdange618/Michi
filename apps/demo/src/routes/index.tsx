@@ -75,6 +75,12 @@ const features = [
     to: "/errors/render-fail",
     tag: "Slice 5",
   },
+  {
+    title: "Prefetch on Hover",
+    desc: 'Hover a link with prefetch="intent" to run its loader early',
+    to: "/prefetch",
+    tag: "Slice 6",
+  },
 ];
 
 export default function IndexPage() {

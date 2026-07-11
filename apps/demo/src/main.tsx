@@ -20,6 +20,8 @@ import ParamsShowcasePage from "./routes/showcase/$id";
 import ProfilePage from "./routes/settings/profile";
 import RootLayout from "./routes/__root";
 import SettingsLayout from "./routes/settings";
+import PrefetchExplainerPage from "./routes/prefetch";
+import PrefetchDemoTarget, { loader as prefetchDemoLoader } from "./routes/prefetch-demo";
 
 const router = new Router([
   {
@@ -64,6 +66,12 @@ const router = new Router([
         path: "/errors/render-fail",
         component: RenderFailPage,
         errorComponent: renderFailError,
+      },
+      { path: "/prefetch", component: PrefetchExplainerPage },
+      {
+        path: "/prefetch-demo",
+        component: PrefetchDemoTarget,
+        loader: prefetchDemoLoader,
       },
     ],
   },
