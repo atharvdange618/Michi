@@ -13,17 +13,40 @@ function resetMockPathname() {
 }
 
 const MockHistory = vi.hoisted(() => {
-  const listeners = new Set<(loc: { pathname: string; search: string; hash: string }) => void>();
+  const listeners = new Set<
+    (loc: { pathname: string; search: string; hash: string }) => void
+  >();
+
+  function parseUrl(to: string): {
+    pathname: string;
+    search: string;
+    hash: string;
+  } {
+    const questionIdx = to.indexOf("?");
+    const hashIdx = to.indexOf("#");
+    const endPath =
+      questionIdx !== -1 ? questionIdx : hashIdx !== -1 ? hashIdx : to.length;
+    const pathname = to.slice(0, endPath);
+    const search =
+      questionIdx !== -1
+        ? to.slice(questionIdx, hashIdx !== -1 ? hashIdx : to.length)
+        : "";
+    const hash = hashIdx !== -1 ? to.slice(hashIdx) : "";
+    return { pathname, search, hash };
+  }
+
   return class MockHistory {
     push(to: string) {
       mockPathname = to;
-      const loc = { pathname: mockPathname, search: "", hash: "" };
+      const loc = parseUrl(to);
       listeners.forEach((l) => l(loc));
     }
     getLocation() {
-      return { pathname: mockPathname, search: "", hash: "" };
+      return parseUrl(mockPathname);
     }
-    subscribe(cb: (loc: { pathname: string; search: string; hash: string }) => void) {
+    subscribe(
+      cb: (loc: { pathname: string; search: string; hash: string }) => void,
+    ) {
       listeners.add(cb);
       return () => {
         listeners.delete(cb);
@@ -42,7 +65,10 @@ afterEach(() => {
 
 function waitForIdle(router: Router, timeoutMs = 2000): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("waitForIdle timeout")), timeoutMs);
+    const timeout = setTimeout(
+      () => reject(new Error("waitForIdle timeout")),
+      timeoutMs,
+    );
     const unsub = router.subscribe(() => {
       if (router.getState().status === "idle") {
         clearTimeout(timeout);
@@ -217,7 +243,9 @@ describe("Loaders", () => {
     router.navigate("/user/atharv");
     await waitForIdle(router);
 
-    expect(loader).toHaveBeenCalledWith(expect.objectContaining({ params: { id: "atharv" } }));
+    expect(loader).toHaveBeenCalledWith(
+      expect.objectContaining({ params: { id: "atharv" } }),
+    );
   });
 
   it("sets status to loading then idle on navigation", async () => {
@@ -324,14 +352,21 @@ describe("Loaders", () => {
         path: "__root",
         component: () => null,
         loader: rootLoader,
-        children: [{ path: "/page", component: () => null, loader: childLoader }],
+        children: [
+          { path: "/page", component: () => null, loader: childLoader },
+        ],
       },
     ];
 
     const router = new Router(routesWithLoaders);
     await waitForIdle(router);
 
-    expect(callOrder).toEqual(["root-start", "child-start", "root-end", "child-end"]);
+    expect(callOrder).toEqual([
+      "root-start",
+      "child-start",
+      "root-end",
+      "child-end",
+    ]);
     expect(router.getState().matches[0]!.loaderData).toBe("root-data");
     expect(router.getState().matches[1]!.loaderData).toBe("child-data");
   });
@@ -370,7 +405,9 @@ describe("Loaders", () => {
         path: "__root",
         component: () => null,
         loader: rootLoader,
-        children: [{ path: "/user/$id", component: () => null, loader: childLoader }],
+        children: [
+          { path: "/user/$id", component: () => null, loader: childLoader },
+        ],
       },
     ];
 
@@ -443,5 +480,150 @@ describe("Loaders", () => {
     match = state.matches.find((m) => m.routeId === "/flaky");
     expect(match!.error).toBeUndefined();
     expect(match!.loaderData).toEqual({ ok: true });
+  });
+});
+
+describe("Prefetch integration", () => {
+  it("prefetch populates cache, navigate consumes it without re-running loader", async () => {
+    const loader = vi.fn().mockResolvedValue({ data: "prefetched" });
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/target", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    // Simulate hover: prefetch triggers loader
+    await router.prefetch("/target");
+    expect(loader).toHaveBeenCalledTimes(1);
+
+    // Simulate click: navigate finds cached promise, skips loader
+    router.navigate("/target");
+    await waitForIdle(router);
+
+    expect(loader).toHaveBeenCalledTimes(1);
+    const state = router.getState();
+    const match = state.matches.find((m) => m.routeId === "/target");
+    expect(match!.loaderData).toEqual({ data: "prefetched" });
+  });
+
+  it("navigate without prefetch runs loader fresh", async () => {
+    const loader = vi.fn().mockResolvedValue({ data: "fresh" });
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/direct", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    // No prefetch - navigate runs loader directly
+    router.navigate("/direct");
+    await waitForIdle(router);
+
+    expect(loader).toHaveBeenCalledTimes(1);
+    const state = router.getState();
+    const match = state.matches.find((m) => m.routeId === "/direct");
+    expect(match!.loaderData).toEqual({ data: "fresh" });
+  });
+
+  it("failed prefetch does not block subsequent navigation", async () => {
+    let shouldFail = true;
+    const loader = vi.fn().mockImplementation(async () => {
+      if (shouldFail) throw new Error("prefetch failed");
+      return { data: "recovered" };
+    });
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/retry", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    // Hover prefetch fails - error lands on match, promise still resolves
+    await router.prefetch("/retry");
+
+    // Navigate consumes the cached result - error is visible on state
+    router.navigate("/retry");
+    await waitForIdle(router);
+
+    let state = router.getState();
+    let match = state.matches.find((m) => m.routeId === "/retry");
+    expect(match!.error).toBeInstanceOf(Error);
+    expect((match!.error as Error).message).toBe("prefetch failed");
+
+    // Navigate away and back - cache was consumed, fresh loader runs
+    shouldFail = false;
+    router.navigate("/");
+    await waitForIdle(router);
+    router.navigate("/retry");
+    await waitForIdle(router);
+
+    state = router.getState();
+    match = state.matches.find((m) => m.routeId === "/retry");
+    expect(match!.error).toBeUndefined();
+    expect(match!.loaderData).toEqual({ data: "recovered" });
+  });
+});
+
+describe("Search params", () => {
+  it.skip("passes search params to loader context", async () => {
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/search", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    // Mock navigate with search params
+    mockPathname = "/search?foo=bar&baz=qux";
+    router.navigate("/search?foo=bar&baz=qux");
+    await waitForIdle(router);
+
+    expect(loader).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {},
+        search: { foo: "bar", baz: "qux" },
+      }),
+    );
+  });
+
+  it.skip("prefetch passes search params to loader context", async () => {
+    const loader = vi.fn().mockResolvedValue({ data: "prefetched" });
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/prefetch", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    await router.prefetch("/prefetch?search=test");
+
+    expect(loader).toHaveBeenCalledWith(
+      expect.objectContaining({
+        params: {},
+        search: { search: "test" },
+      }),
+    );
   });
 });

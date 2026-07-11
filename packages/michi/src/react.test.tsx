@@ -25,14 +25,30 @@ function resetMockPathname() {
 
 const MockHistory = vi.hoisted(() => {
   const listeners = new Set<(loc: { pathname: string; search: string; hash: string }) => void>();
+
+  function parseUrl(to: string): {
+    pathname: string;
+    search: string;
+    hash: string;
+  } {
+    const questionIdx = to.indexOf("?");
+    const hashIdx = to.indexOf("#");
+    const endPath = questionIdx !== -1 ? questionIdx : hashIdx !== -1 ? hashIdx : to.length;
+    const pathname = to.slice(0, endPath);
+    const search =
+      questionIdx !== -1 ? to.slice(questionIdx, hashIdx !== -1 ? hashIdx : to.length) : "";
+    const hash = hashIdx !== -1 ? to.slice(hashIdx) : "";
+    return { pathname, search, hash };
+  }
+
   return class MockHistory {
     push(to: string) {
       mockPathname = to;
-      const loc = { pathname: mockPathname, search: "", hash: "" };
+      const loc = parseUrl(to);
       listeners.forEach((l) => l(loc));
     }
     getLocation() {
-      return { pathname: mockPathname, search: "", hash: "" };
+      return parseUrl(mockPathname);
     }
     subscribe(cb: (loc: { pathname: string; search: string; hash: string }) => void) {
       listeners.add(cb);
@@ -321,6 +337,166 @@ describe("Link props forwarding", () => {
     });
     fireEvent.click(screen.getByText("click me"));
     expect(onClick).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("Link prefetch", () => {
+  it("triggers prefetch on mouseenter with intent", async () => {
+    const loader = vi.fn().mockResolvedValue({ name: "test" });
+    const routes = [
+      {
+        path: "__root",
+        component: () => (
+          <Link to="/prefetch" prefetch="intent">
+            hover me
+          </Link>
+        ),
+        children: [{ path: "/prefetch", component: () => <div>prefetched</div>, loader }],
+      },
+    ];
+
+    const router = new Router(routes);
+    const prefetchSpy = vi.spyOn(router, "prefetch");
+
+    render(<RouterProvider router={router} />);
+    await waitFor(() => {
+      expect(screen.getByText("hover me")).toBeDefined();
+    });
+
+    fireEvent.mouseEnter(screen.getByText("hover me"));
+
+    // prefetch called after default 50ms delay
+    await waitFor(() => {
+      expect(prefetchSpy).toHaveBeenCalledWith("/prefetch");
+    });
+
+    prefetchSpy.mockRestore();
+  });
+
+  it("does not trigger prefetch when prefetch=none", async () => {
+    const loader = vi.fn().mockResolvedValue({ name: "test" });
+    const routes = [
+      {
+        path: "__root",
+        component: () => (
+          <Link to="/prefetch" prefetch="none">
+            no prefetch
+          </Link>
+        ),
+        children: [{ path: "/prefetch", component: () => <div>page</div>, loader }],
+      },
+    ];
+
+    const router = new Router(routes);
+    const prefetchSpy = vi.spyOn(router, "prefetch");
+
+    render(<RouterProvider router={router} />);
+    await waitFor(() => {
+      expect(screen.getByText("no prefetch")).toBeDefined();
+    });
+
+    fireEvent.mouseEnter(screen.getByText("no prefetch"));
+    await new Promise((r) => setTimeout(r, 150));
+
+    expect(prefetchSpy).not.toHaveBeenCalled();
+    prefetchSpy.mockRestore();
+  });
+
+  it("cancels prefetch on mouseleave", async () => {
+    const loader = vi.fn().mockResolvedValue({ name: "test" });
+    const routes = [
+      {
+        path: "__root",
+        component: () => (
+          <Link to="/prefetch" prefetch="intent">
+            hover me
+          </Link>
+        ),
+        children: [{ path: "/prefetch", component: () => <div>page</div>, loader }],
+      },
+    ];
+
+    const router = new Router(routes);
+    const prefetchSpy = vi.spyOn(router, "prefetch");
+
+    render(<RouterProvider router={router} />);
+    await waitFor(() => {
+      expect(screen.getByText("hover me")).toBeDefined();
+    });
+
+    fireEvent.mouseEnter(screen.getByText("hover me"));
+    fireEvent.mouseLeave(screen.getByText("hover me"));
+    await new Promise((r) => setTimeout(r, 150));
+
+    expect(prefetchSpy).not.toHaveBeenCalled();
+    prefetchSpy.mockRestore();
+  });
+
+  it("respects custom prefetchDelay", async () => {
+    const loader = vi.fn().mockResolvedValue({ name: "test" });
+    const routes = [
+      {
+        path: "__root",
+        component: () => (
+          <Link to="/prefetch" prefetch="intent" prefetchDelay={200}>
+            slow hover
+          </Link>
+        ),
+        children: [{ path: "/prefetch", component: () => <div>page</div>, loader }],
+      },
+    ];
+
+    const router = new Router(routes);
+    const prefetchSpy = vi.spyOn(router, "prefetch");
+
+    render(<RouterProvider router={router} />);
+    await waitFor(() => {
+      expect(screen.getByText("slow hover")).toBeDefined();
+    });
+
+    fireEvent.mouseEnter(screen.getByText("slow hover"));
+
+    // Should not be called after 100ms (less than 200ms delay)
+    await new Promise((r) => setTimeout(r, 100));
+    expect(prefetchSpy).not.toHaveBeenCalled();
+
+    // Should be called after 200ms delay
+    await waitFor(() => {
+      expect(prefetchSpy).toHaveBeenCalledWith("/prefetch");
+    });
+
+    prefetchSpy.mockRestore();
+  });
+
+  it("forwards onMouseEnter and onMouseLeave handlers", async () => {
+    const onMouseEnter = vi.fn();
+    const onMouseLeave = vi.fn();
+    const routes = [
+      {
+        path: "__root",
+        component: () => (
+          <Link
+            to="/test"
+            prefetch="intent"
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+          >
+            with handlers
+          </Link>
+        ),
+      },
+    ];
+
+    render(<TestRouter routes={routes} />);
+    await waitFor(() => {
+      expect(screen.getByText("with handlers")).toBeDefined();
+    });
+
+    fireEvent.mouseEnter(screen.getByText("with handlers"));
+    fireEvent.mouseLeave(screen.getByText("with handlers"));
+
+    expect(onMouseEnter).toHaveBeenCalledTimes(1);
+    expect(onMouseLeave).toHaveBeenCalledTimes(1);
   });
 });
 
