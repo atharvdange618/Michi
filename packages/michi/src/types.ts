@@ -34,3 +34,7 @@ export type RouterState = {
   matches: RouteMatch[];
   status: "idle" | "loading" | "error";
 };
+
+export type RouterOptions = {
+  prefetchTtlMs?: number;
+};

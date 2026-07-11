@@ -7,12 +7,16 @@ import React, {
   useCallback,
   useContext,
   useSyncExternalStore,
+  useEffect,
+  useRef,
 } from "react";
 import { Loading } from "./components/loading";
 import { NotFound } from "./components/not-found";
 import { RouteError as DefaultRouteError } from "./components/route-error";
 import type { RouteMatch, RouterState } from "./types";
 import type { Router } from "./router";
+
+const DEFAULT_PREFETCH_DELAY_MS = 50;
 
 const RouterContext = createContext<Router | null>(null);
 
@@ -179,20 +183,46 @@ export function Outlet({ fallback = <NotFound /> }: { fallback?: React.ReactNode
   );
 }
 
-export const Link = React.forwardRef<
-  HTMLAnchorElement,
-  {
-    to: string;
-    children: React.ReactNode;
-  } & React.AnchorHTMLAttributes<HTMLAnchorElement>
->(function Link({ to, children, ...rest }, ref) {
+export type LinkProps = {
+  to: string;
+  children: React.ReactNode;
+  prefetch?: "intent" | "none";
+  prefetchDelay?: number;
+} & React.AnchorHTMLAttributes<HTMLAnchorElement>;
+
+export const Link = React.forwardRef<HTMLAnchorElement, LinkProps>(function Link(
+  { to, children, prefetch = "none", prefetchDelay = DEFAULT_PREFETCH_DELAY_MS, ...rest },
+  ref,
+) {
   const router = useRouter();
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    };
+  }, []);
 
   return (
     <a
       ref={ref}
       href={to}
       {...rest}
+      onMouseEnter={(e) => {
+        if (prefetch === "intent") {
+          hoverTimer.current = setTimeout(() => {
+            router.prefetch(to);
+          }, prefetchDelay);
+        }
+        rest.onMouseEnter?.(e);
+      }}
+      onMouseLeave={(e) => {
+        if (hoverTimer.current) {
+          clearTimeout(hoverTimer.current);
+          hoverTimer.current = null;
+        }
+        rest.onMouseLeave?.(e);
+      }}
       onClick={(e) => {
         e.preventDefault();
         router.navigate(to);

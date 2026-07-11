@@ -4,6 +4,7 @@ export type {
   RouterState,
   ParsedLocation,
   LoaderContext,
+  RouterOptions,
 } from "./types";
 export { Router } from "./router";
 export {
@@ -15,6 +16,7 @@ export {
   useLoaderData,
   useRouteError,
   useRouter,
+  type LinkProps,
 } from "./react";
 export { Loading } from "./components/loading";
 export { NotFound } from "./components/not-found";

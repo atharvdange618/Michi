@@ -1,7 +1,14 @@
 import { History } from "./history";
 import { matchTree } from "./matcher";
 import { runLoaders } from "./loader";
-import type { ParsedLocation, RouteDefinition, RouteMatch, RouterState } from "./types";
+import type {
+  ParsedLocation,
+  RouteDefinition,
+  RouteMatch,
+  RouterOptions,
+  RouterState,
+} from "./types";
+import { PrefetchCache, splitPath } from "./prefetch";
 
 export class Router {
   private history: History;
@@ -10,13 +17,15 @@ export class Router {
   private listeners = new Set<() => void>();
   private navigationId = 0;
   private previousMatches: RouteMatch[] = [];
+  private prefetchCache: PrefetchCache;
 
-  constructor(routes: RouteDefinition[]) {
+  constructor(routes: RouteDefinition[], options?: RouterOptions) {
     this.routes = routes;
     this.history = new History();
+    this.prefetchCache = new PrefetchCache(options?.prefetchTtlMs ?? 30_000);
 
     const initialLocation = this.history.getLocation();
-    const initialMatches = this.match(initialLocation.pathname);
+    const initialMatchesPromise = runLoaders(this.match(initialLocation.pathname), []);
 
     this.state = {
       location: initialLocation,
@@ -24,7 +33,7 @@ export class Router {
       status: "loading",
     };
 
-    void this.commitNavigation(initialLocation, initialMatches, ++this.navigationId);
+    void this.commitNavigation(initialLocation, initialMatchesPromise, ++this.navigationId);
 
     this.history.subscribe((location) => void this.handleLocationChange(location));
   }
@@ -33,10 +42,26 @@ export class Router {
     return matchTree(this.routes, pathname);
   }
 
+  prefetch(to: string): Promise<RouteMatch[]> {
+    const { pathname, search } = splitPath(to);
+    const key = pathname + search;
+    return this.prefetchCache.getOrCreate(key, () =>
+      runLoaders(this.match(pathname), this.state.matches),
+    );
+  }
+
   private async handleLocationChange(location: ParsedLocation): Promise<void> {
     const navId = ++this.navigationId;
-    const pendingMatches = this.match(location.pathname);
     this.previousMatches = this.state.matches;
+
+    const key = location.pathname + location.search;
+    const cached = this.prefetchCache.peek(key);
+
+    if (cached) this.prefetchCache.delete(key);
+
+    const resolvedMatchesPromise = cached
+      ? cached
+      : runLoaders(this.match(location.pathname), this.previousMatches);
 
     const pendingMs = 1000;
     const pendingMinMs = 500;
@@ -50,7 +75,7 @@ export class Router {
       this.notify();
     }, pendingMs);
 
-    await this.commitNavigation(location, pendingMatches, navId, {
+    await this.commitNavigation(location, resolvedMatchesPromise, navId, {
       timer: pendingTimer,
       info: pendingInfo,
       minDisplayMs: pendingMinMs,
@@ -59,7 +84,7 @@ export class Router {
 
   private async commitNavigation(
     location: ParsedLocation,
-    pendingMatches: RouteMatch[],
+    resolvedMatchesPromise: Promise<RouteMatch[]>,
     navId: number,
     pending?: {
       timer: ReturnType<typeof setTimeout>;
@@ -68,7 +93,7 @@ export class Router {
     },
   ): Promise<void> {
     try {
-      const resolvedMatches = await runLoaders(pendingMatches, this.previousMatches);
+      const resolvedMatches = await resolvedMatchesPromise;
       clearTimeout(pending?.timer);
 
       if (navId !== this.navigationId) return;
