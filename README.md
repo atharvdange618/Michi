@@ -73,7 +73,11 @@ Run the docs site:
 pnpm docs:dev
 ```
 
-Check out [the blog post](https://michi-docs.vercel.app/blog/what-happens-when-you-click-a-link-in-react) for the deep dive on Slices 1-2 (History API + Route Matching).
+Check out the blog series for deep dives into how each slice was built:
+
+- [What Actually Happens When You Click a Link in React](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) - Slices 1-2 (History API + Route Matching)
+- [Layouts That Persist and Data That Arrives Before You Do](https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do) - Slices 3-4 (Nested Routes + Data Loaders)
+- [Per-Route Error Boundaries and Prefetch on Hover](https://tty.atharvdangedev.in/blog/per-route-error-boundaries-and-prefetch-on-hover) - Slices 5-6 (Error Boundaries + Prefetch)
 
 ## The demo app
 
