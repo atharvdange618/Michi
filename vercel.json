@@ -1,0 +1,5 @@
+{
+  "buildCommand": "pnpm docs:build",
+  "outputDirectory": "dist",
+  "framework": null
+}
