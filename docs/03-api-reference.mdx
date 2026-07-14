@@ -1,0 +1,193 @@
+---
+title: API Reference
+description: The complete public API of the michi package.
+---
+
+## Types
+
+### `RouteDefinition`
+
+```ts
+type RouteDefinition = {
+  path: string;
+  component: ComponentType;
+  loader?: (ctx: LoaderContext<any, any>) => Promise<unknown>;
+  errorComponent?: ComponentType<{ error: unknown }>;
+  children?: RouteDefinition[];
+};
+```
+
+| Field            | Description                                                                                                                 |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `path`           | URL pattern. Static (`/about`), dynamic (`/user/$id`), or wildcard (`/files/*`). Paths starting with `_` are layout routes. |
+| `component`      | React component to render when this route matches.                                                                          |
+| `loader`         | Optional async function that runs before the component renders. Receives `LoaderContext` with `params` and `search`.        |
+| `errorComponent` | Optional error boundary component. Renders when the loader throws or the component crashes. Receives `{ error: unknown }`.  |
+| `children`       | Nested route definitions. When a child matches, the parent acts as a layout wrapper.                                        |
+
+### `RouteMatch`
+
+```ts
+type RouteMatch = {
+  routeId: string;
+  params: Record<string, string>;
+  loaderData: unknown;
+  errorComponent?: ComponentType<{ error: unknown }>;
+  error?: unknown;
+  loader?: (ctx: LoaderContext) => Promise<unknown>;
+  component: ComponentType;
+};
+```
+
+### `RouterState`
+
+```ts
+type RouterState = {
+  location: ParsedLocation;
+  matches: RouteMatch[];
+  status: "idle" | "loading" | "error";
+  error?: unknown;
+};
+```
+
+The `error` field is populated when a loader throws at the top level (a bug in the router itself, not in your app code). Individual route loader errors live on `RouteMatch.error` instead.
+
+### `ParsedLocation`
+
+```ts
+type ParsedLocation = {
+  pathname: string;
+  search: string;
+  hash: string;
+};
+```
+
+### `LoaderContext`
+
+```ts
+type LoaderContext<
+  TParams = Record<string, string>,
+  TSearch = Record<string, string>,
+> = {
+  params: TParams;
+  search: TSearch;
+};
+```
+
+## Classes
+
+### `Router`
+
+```ts
+class Router {
+  constructor(routes: RouteDefinition[], options?: RouterOptions);
+  navigate(to: string): void;
+  prefetch(to: string): Promise<RouteMatch[]>;
+  getState(): RouterState;
+  subscribe(callback: () => void): () => void;
+}
+```
+
+Creates a new router instance with the given route tree.
+
+### `RouterOptions`
+
+```ts
+type RouterOptions = {
+  prefetchTtlMs?: number; // default: 30_000 (30 seconds)
+};
+```
+
+Configure router behavior. `prefetchTtlMs` controls how long prefetched loader results stay in cache before expiring.
+
+## React Components
+
+### `RouterProvider`
+
+```tsx
+<RouterProvider router={router} loading={<Loading />} />
+```
+
+| Prop      | Type        | Description                                  |
+| --------- | ----------- | -------------------------------------------- |
+| `router`  | `Router`    | The router instance                          |
+| `loading` | `ReactNode` | Optional component shown during initial load |
+
+### `Link`
+
+```tsx
+<Link to="/about" prefetch="intent">
+  About
+</Link>
+```
+
+| Prop            | Type                 | Description                                              |
+| --------------- | -------------------- | -------------------------------------------------------- |
+| `to`            | `string`             | The destination URL                                      |
+| `prefetch`      | `"intent" \| "none"` | When to prefetch the route's loaders (default: `"none"`) |
+| `prefetchDelay` | `number`             | Debounce delay in ms for intent prefetch (default: `50`) |
+| `children`      | `ReactNode`          | Link content                                             |
+
+Renders an `<a>` tag with `href` for accessibility and SEO. Spreads any additional `AnchorHTMLAttributes` (e.g. `className`, `style`, `target`).
+
+### `Outlet`
+
+```tsx
+<Outlet fallback={<NotFound />} />
+```
+
+| Prop       | Type        | Description                                                               |
+| ---------- | ----------- | ------------------------------------------------------------------------- |
+| `fallback` | `ReactNode` | Component to render when no child route matches (default: `<NotFound />`) |
+
+Renders the matched child route component at the current depth level.
+
+## Hooks
+
+### `useRouter`
+
+```ts
+const router = useRouter();
+router.navigate("/about");
+```
+
+Returns the router instance. Use for programmatic navigation.
+
+### `useRouterState`
+
+```ts
+const state = useRouterState();
+// state.location, state.matches, state.status
+```
+
+Returns the current `RouterState`. Re-renders when the state changes.
+
+### `useParams`
+
+```ts
+const { id } = useParams<{ id: string }>();
+```
+
+Returns the route params for the current match. Type the generic to get typed params.
+
+### `useLoaderData`
+
+```ts
+const user = useLoaderData<{ name: string; email: string }>();
+```
+
+Returns the `loaderData` from the current route's loader. Type the generic for type safety.
+
+### `useRouteError`
+
+```tsx
+function ErrorComponent() {
+  const error = useRouteError();
+  const message = error instanceof Error ? error.message : String(error);
+  return <div>Something went wrong: {message}</div>;
+}
+```
+
+Returns the error caught by the current route's error boundary. Use inside an `errorComponent`. The error is typed as `unknown` -- narrow it yourself with `instanceof Error` or `String(error)`.
+
+Can be called from any component inside the error boundary's tree, not just the top-level error component. This is useful when your error UI has nested components that also need access to the error without prop drilling.

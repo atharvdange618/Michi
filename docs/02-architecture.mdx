@@ -1,0 +1,115 @@
+---
+title: Architecture
+description: How Michi works under the hood.
+---
+
+## The Core Router Loop
+
+Every client-side router runs the same fundamental loop. Here is Michi's:
+
+```text
+URL changes (pushState or popstate)
+        |
+        v
+History notifies Router
+        |
+        v
+Router runs matcher against new URL
+        |
+        v
+Matched routes determined (could be nested: root -> user -> $id)
+        |
+        v
+Router runs loaders in parallel (all matched routes)
+        |
+        v
+Router updates state with loaderData -> React re-renders
+        |
+        v
+<RouterProvider> renders matched components top-down
+Each parent renders <Outlet /> which renders the next child
+```
+
+It is a one-way chain. Nothing in this loop talks back up. History does not know about the Router. The Router does not know about React. React does not know about History. Each layer notifies the one below it.
+
+## Key Files
+
+| File         | Purpose                                                                                                                |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `types.ts`   | Core type definitions: `ParsedLocation`, `RouteDefinition`, `RouteMatch`, `RouterState`, `LoaderContext`               |
+| `history.ts` | `History` class wrapping `window.history.pushState/replaceState` and `popstate` event                                  |
+| `router.ts`  | `Router` class that subscribes to History changes, runs matching, maintains state                                      |
+| `matcher.ts` | `matchRoute()` (single pattern) and `matchTree()` (recursive tree matching)                                            |
+| `loader.ts`  | `runLoaders()` executes all route loaders in parallel with race condition protection                                   |
+| `react.tsx`  | React bindings: `RouterProvider`, `Link`, `Outlet`, hooks (`useRouter`, `useParams`, `useLoaderData`, `useRouteError`) |
+
+<FileTree>
+- packages/
+  - michi/
+    - src/
+      - types.ts
+      - history.ts
+      - router.ts
+      - matcher.ts
+      - loader.ts
+      - react.tsx
+      - prefetch.ts
+      - components/
+        - not-found.tsx
+        - loading.tsx
+        - route-error.tsx
+</FileTree>
+
+## Route Matching
+
+Michi supports three pattern types:
+
+- **Static** -- `/about` matches exactly `/about`
+- **Dynamic** -- `/user/$id` matches `/user/atharv` and extracts `{ id: "atharv" }`
+- **Wildcard** -- `/files/*` matches `/files/a/b/c` and captures the full remaining path
+
+Patterns compile into regex. Each pattern produces a `CompiledPattern` with a regex and an ordered list of parameter names.
+
+Route order matters: first match wins. Always put more specific routes before more general ones.
+
+## The Outlet Pattern
+
+Nesting is powered by a single number in React Context. `RouterProvider` renders `matches[0]` and sets context to `1`. Each `<Outlet />` reads its index, renders the component at that position, and increments for the next level.
+
+No tree diffing, no special reconciler hooks, no framework magic. It is a context consumer that does an array lookup.
+
+## Error Isolation
+
+Each `<Outlet />` wraps its component in a `RouteErrorBoundary`. Errors are caught at two separate points:
+
+- **Loader errors** -- caught in `runLoaders()` via `try/catch`, stored on `RouteMatch.error`
+- **Render errors** -- caught by React's `getDerivedStateFromError` in the class-based `RouteErrorBoundary`
+
+Both render through the same boundary. Errors are isolated per-route: a failure in one route does not crash parent layouts.
+
+## React Integration
+
+Michi uses `useSyncExternalStore` (not `useState`) to subscribe to the Router's external state. This prevents tearing in React 18+ concurrent mode, where `useState` would allow different components to see different URL snapshots in the same render pass.
+
+## Feature Deep Dives
+
+<CardGroup cols={2}>
+  <Card title="History API" href="/features/history-api" icon="globe">
+    How client-side navigation works without page reloads.
+  </Card>
+  <Card title="Route Matching" href="/features/route-matching" icon="git-branch">
+    How URL patterns become regex that decides what renders.
+  </Card>
+  <Card title="Nested Routes" href="/features/nested-routes" icon="layers">
+    Persistent layouts, the Outlet pattern, and route trees.
+  </Card>
+  <Card title="Data Loaders" href="/features/data-loaders" icon="database">
+    Render-as-you-fetch with parallel execution and race condition guards.
+  </Card>
+  <Card title="Error Boundaries" href="/features/error-boundaries" icon="shield">
+    Per-route error isolation for loader and render failures.
+  </Card>
+  <Card title="Prefetch on Hover" href="/features/prefetch-on-hover" icon="zap">
+    Making navigation feel instant by running loaders before the click.
+  </Card>
+</CardGroup>

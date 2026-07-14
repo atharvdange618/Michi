@@ -1,0 +1,142 @@
+---
+title: Getting Started
+description: Install Michi and build your first route.
+---
+
+## Installation
+
+Michi is a monorepo package. Clone the repo and install dependencies:
+
+```bash
+git clone https://github.com/atharvdange618/Michi.git
+cd Michi
+pnpm install
+```
+
+The router package lives at `packages/michi`. The demo app lives at `apps/demo`.
+
+## Setting up the Router
+
+Define your route tree and wrap your app in `RouterProvider`:
+
+```tsx main.tsx
+import { Router, RouterProvider } from "michi";
+import RootLayout from "./routes/__root";
+import HomePage from "./routes/index";
+import AboutPage from "./routes/about";
+import UserPage from "./routes/user/$id";
+
+const router = new Router([
+  {
+    path: "__root",
+    component: RootLayout,
+    children: [
+      { path: "/", component: HomePage },
+      { path: "/about", component: AboutPage },
+      { path: "/user/$id", component: UserPage },
+    ],
+  },
+]);
+
+function App() {
+  return <RouterProvider router={router} />;
+}
+```
+
+## Writing a Route Component
+
+A route component is a regular React component. Use `useParams` to read dynamic segments:
+
+```tsx routes/user/$id.tsx
+import { useParams } from "michi";
+
+export default function UserPage() {
+  const { id } = useParams<{ id: string }>();
+  return <h1>Hello, {id}</h1>;
+}
+```
+
+## Adding a Loader
+
+Loaders fetch data before the component renders. Export a `loader` function and pass it to the route definition:
+
+```tsx routes/user/$id.tsx
+import { useParams, useLoaderData } from "michi";
+import type { LoaderContext } from "michi";
+
+export async function loader({ params }: LoaderContext<{ id: string }>) {
+  const res = await fetch(`/api/user/${params.id}`);
+  return res.json();
+}
+
+export default function UserPage() {
+  const user = useLoaderData<{ name: string; email: string }>();
+  return (
+    <div>
+      <h1>{user.name}</h1>
+      <p>{user.email}</p>
+    </div>
+  );
+}
+```
+
+Wire it into the route definition:
+
+```tsx main.tsx
+import UserPage, { loader as userLoader } from "./routes/user/$id";
+
+{ path: "/user/$id", component: UserPage, loader: userLoader }
+```
+
+## Programmatic Navigation
+
+Use the `useRouter` hook to navigate from event handlers or effects:
+
+```tsx react.tsx
+import { useRouter } from "michi";
+
+function LogoutButton() {
+  const router = useRouter();
+
+  return <button onClick={() => router.navigate("/")}>Log out</button>;
+}
+```
+
+## Link Component
+
+Use `Link` for client-side navigation. It renders an `<a>` tag with `href` for accessibility:
+
+```tsx react.tsx
+import { Link } from "michi";
+
+<Link to="/about">About</Link>;
+```
+
+## Error Handling
+
+Each route can define a custom error component:
+
+```tsx routes/user/$id.tsx
+export function errorComponent({ error }: { error: unknown }) {
+  return <div>Something went wrong: {String(error)}</div>;
+}
+```
+
+Or handle errors at the loader level -- errors thrown in loaders are caught and rendered by the route's error boundary without crashing the rest of the app.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" href="/architecture" icon="layers">
+    Understand how the router works under the hood.
+  </Card>
+  <Card title="API Reference" href="/api-reference" icon="code">
+    The complete public API of the michi package.
+  </Card>
+  <Card title="Features" href="/features/history-api" icon="sparkles">
+    Deep dives into each slice of the router.
+  </Card>
+  <Card title="Blog" href="/blog" icon="pen-tool">
+    The decisions, trade-offs, and lessons learned.
+  </Card>
+</CardGroup>
