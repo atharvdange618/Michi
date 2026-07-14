@@ -6,21 +6,23 @@ Michi is a client-side router built from first principles - no routing libraries
 
 The name 道 (michi) is Japanese for "path" or "the way." Seemed fitting.
 
+**[Documentation](https://michi-docs.vercel.app)** | **[Demo](https://michi.atharvdangedev.in)** | **[Blog](https://michi-docs.vercel.app/blog)**
+
 ## The idea
 
 Every feature is built as a **slice** - a self-contained, demonstrable milestone that builds on the previous one. Each slice answers a specific question about how routing works:
 
 | Slice | Status  | What it covers                                                                                |
 | ----- | ------- | --------------------------------------------------------------------------------------------- |
-| 1     | ✅ Done | **History API** - `pushState`, `popstate`, and the core router loop                           |
-| 2     | ✅ Done | **Route Matching** - turning URL patterns like `/user/$id` into regex that actually matches   |
-| 3     | ✅ Done | **Nested Routes** - the route tree, `<Outlet />`, and layouts that persist across navigations |
-| 4     | ✅ Done | **Data Loaders** - render-as-you-fetch vs fetch-on-render                                     |
-| 5     | ✅ Done | **Error Boundaries** - isolating failures per route instead of blank screens                  |
-| 6     | 🔲 Next | **Prefetch on Hover** - running loaders early so navigation feels instant                     |
-| 7     | 🔲      | **Search Params** - typed, serializable state that lives in the URL                           |
-| 8     | 🔲      | **File-Based Routing** - a codegen script that reads your filesystem                          |
-| 9     | 🔲      | **Typed Routes** - compile-time safety for paths, params, and loader data                     |
+| 1     | Done | **History API** - `pushState`, `popstate`, and the core router loop                           |
+| 2     | Done | **Route Matching** - turning URL patterns like `/user/$id` into regex that actually matches   |
+| 3     | Done | **Nested Routes** - the route tree, `<Outlet />`, and layouts that persist across navigations |
+| 4     | Done | **Data Loaders** - render-as-you-fetch vs fetch-on-render                                     |
+| 5     | Done | **Error Boundaries** - isolating failures per route instead of blank screens                  |
+| 6     | Done | **Prefetch on Hover** - running loaders early so navigation feels instant                     |
+| 7     | Planned | **Search Params** - typed, serializable state that lives in the URL                           |
+| 8     | Planned | **File-Based Routing** - a codegen script that reads your filesystem                          |
+| 9     | Planned | **Typed Routes** - compile-time safety for paths, params, and loader data                     |
 
 ## The stack
 
@@ -28,11 +30,12 @@ Every feature is built as a **slice** - a self-contained, demonstrable milestone
 - **Language:** TypeScript (strict)
 - **Demo app:** Vite + React 19
 - **Router package:** Pure TypeScript, zero runtime dependencies
+- **Docs:** Blume (Astro-based docs framework)
 - **Testing:** Vitest + @testing-library/react
 
 ## What's done
 
-Slices 1–5 are built and working. The router supports:
+Slices 1-6 are built and working. The router supports:
 
 - **Dynamic params** - `/user/$id` matches `/user/atharv` and extracts `{ id: "atharv" }`
 - **Wildcard routes** - `/files/*` matches `/files/public/uploads/report.pdf` and captures the full path
@@ -47,8 +50,30 @@ Slices 1–5 are built and working. The router supports:
 - **Per-route error boundaries** - loader and render errors are isolated to the failing route
 - **Custom error components** - each route can define its own `errorComponent`
 - **useRouteError hook** - access the error from within an error component
+- **Prefetch on hover** - run loaders early when the user hovers a link
 
-Check out [the blog post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) for the deep dive on Slices 1–2 (History API + Route Matching).
+## Getting started
+
+```bash
+git clone https://github.com/atharvdange618/Michi.git
+cd Michi
+pnpm install
+```
+
+Run the demo app:
+
+```bash
+cd apps/demo
+pnpm dev
+```
+
+Run the docs site:
+
+```bash
+pnpm docs:dev
+```
+
+Check out [the blog post](https://michi-docs.vercel.app/blog/what-happens-when-you-click-a-link-in-react) for the deep dive on Slices 1-2 (History API + Route Matching).
 
 ## The demo app
 
@@ -66,6 +91,7 @@ The demo app at `apps/demo/` showcases every feature of the router:
 /settings/billing    - Same layout, different child
 /errors/loader-fail  - Demo: loader error with custom error component
 /errors/render-fail  - Demo: render error with custom error component
+/prefetch            - Demo: prefetch on hover with intent detection
 ```
 
 ## License

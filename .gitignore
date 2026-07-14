@@ -28,5 +28,5 @@ AGENTS.md
 CONTEXT.md
 .blume/
 .astro/
-src/
+/src/
 astro.config.mjs

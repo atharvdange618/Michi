@@ -21,7 +21,7 @@ const structuredData = {
 
 const navSections: Array<{
   label: string;
-  links: Array<{ to: string; label: string; prefetch?: "intent" | "none" }>;
+  links: Array<{ to: string; label: string; prefetch?: "intent" | "none"; external?: boolean }>;
 }> = [
   {
     label: "Core",
@@ -61,6 +61,13 @@ const navSections: Array<{
     links: [
       { to: "/prefetch", label: "Demo", prefetch: "intent" },
       { to: "/prefetch-demo?via=hover", label: "Target", prefetch: "intent" },
+    ],
+  },
+  {
+    label: "Links",
+    links: [
+      { to: "https://michi-docs.vercel.app", label: "Docs", external: true },
+      { to: "https://github.com/atharvdange618/Michi", label: "GitHub", external: true },
     ],
   },
 ];
@@ -158,24 +165,44 @@ export default function RootLayout() {
                     ·
                   </span>
                 )}
-                {section.links.map((link) => (
-                  <Link
-                    key={link.to}
-                    to={link.to}
-                    prefetch={link.prefetch}
-                    style={navLinkStyle}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = "var(--ink)";
-                      e.currentTarget.style.background = "var(--bg-raised)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = "var(--ink-muted)";
-                      e.currentTarget.style.background = "transparent";
-                    }}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                {section.links.map((link) =>
+                  link.external ? (
+                    <a
+                      key={link.to}
+                      href={link.to}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={navLinkStyle}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "var(--ink)";
+                        e.currentTarget.style.background = "var(--bg-raised)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "var(--ink-muted)";
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      key={link.to}
+                      to={link.to}
+                      prefetch={link.prefetch}
+                      style={navLinkStyle}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = "var(--ink)";
+                        e.currentTarget.style.background = "var(--bg-raised)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = "var(--ink-muted)";
+                        e.currentTarget.style.background = "transparent";
+                      }}
+                    >
+                      {link.label}
+                    </Link>
+                  ),
+                )}
               </div>
             ))}
           </nav>
