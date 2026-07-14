@@ -1,0 +1,99 @@
+---
+title: Route Matching
+description: How URL patterns become regex that decides what renders.
+---
+
+## From String Comparison to Regex
+
+In the first iteration, matching looks like this:
+
+```ts
+const route = this.routes.find((r) => r.path === pathname);
+```
+
+Exact string comparison. It works for `/about`. The moment you have `/user/$id`, it falls apart because `"/user/$id" === "/user/atharv"` is false. You need something that understands `$id` is a placeholder, not a literal string.
+
+The solution is to compile route patterns into regular expressions. Each pattern compiles into a `CompiledPattern`: a regex that matches the URL shape, and an ordered list of parameter names extracted from the placeholders.
+
+## Pattern Compilation
+
+```text
+Input: "/user/$id"
+
+Split by "/"
+  -> ['', 'user', '$id']
+
+Map each segment
+  '' -> ''
+  'user' -> 'user' (escape special chars, none here)
+  '$id' -> '([^/]+)' (capture group for non-slash chars)
+           also push 'id' to paramNames
+
+Join by "/"
+  -> "/user/([^/]+)"
+
+Wrap with anchors
+  -> "^/user/([^/]+)$"
+
+Result:
+  { regex: /^\/user\/([^/]+)$/, paramNames: ['id'] }
+```
+
+The `$id` pattern grabs exactly one path segment. For `/user/atharv`, it captures `atharv`. For `/user/atharv/settings`, the slash stops it at `atharv`. Multi-segment wildcards like `/files/*` matching `/files/a/b/c` use `(.*)` instead, which captures everything including slashes.
+
+The `^` and `$` anchors are not optional. Without them, the pattern `/about` would match `/about/extra` because the regex would find `/about` as a substring. With anchors, the entire URL must match start to finish.
+
+## Extracting Params
+
+When the regex matches, the captured values come back as an array. Pair them with `paramNames` by index:
+
+```ts matcher.ts
+paramNames.forEach((name, i) => {
+  params[name] = match[i + 1];
+});
+// { id: 'atharv' }
+```
+
+## Route Order Matters
+
+The matching loop tries routes in order and returns the first match:
+
+```ts
+new Router([
+  { path: "/user/$id", component: UserPage },
+  { path: "/user/settings", component: SettingsPage }, // never reached
+]);
+```
+
+`/user/settings` will never render `SettingsPage`. The `$id` pattern matches it first, captures the string `"settings"` as the id param, and returns.
+
+The fix is to always put more specific routes before more general ones:
+
+```ts
+new Router([
+  { path: "/user/settings", component: SettingsPage }, // checked first
+  { path: "/user/$id", component: UserPage }, // fallback
+]);
+```
+
+This is the same behavior as TanStack Router and React Router. It is not a bug, it is a deliberate trade-off. You get predictable, explicit control over resolution order.
+
+## The Compiled Pattern Cache
+
+Patterns are compiled once and cached in a `Map<string, CompiledPattern>`. The same pattern used across multiple navigations is only compiled once, keeping the matching loop fast.
+
+## Why `$` Instead of `:`
+
+Michi follows TanStack Router's convention of using `$` for params. The primary reason is filesystem compatibility: **colons are invalid in Windows filenames.** `apps/routes/user/:id.tsx` -- Windows rejects this entirely because `:` is a reserved character in Windows paths (used for drive letters like `C:`). Your file-based routing script would fail on any Windows machine.
+
+`$id` works everywhere. Linux, macOS, Windows. `$` has no special meaning in any filesystem.
+
+The secondary benefit: `$id` is a valid JavaScript identifier. You can use it as a variable name, in destructuring, as an unquoted object key. This matters when codegen generates types from your file tree -- the extracted name `id` is immediately usable in generated object types like `{ id: string }`.
+
+## Key Takeaways
+
+- **Route order equals resolution order.** The first matching route wins. Put static routes (`/user/settings`) before dynamic ones (`/user/$id`).
+- **The `^` and `$` anchors matter.** Without them, `/about` matches `/about/extra` as a substring.
+- **One placeholder per segment.** `$id` captures `atharv` from `/user/atharv`. Wildcard `*` captures everything including slashes.
+- **`$` for params, not `:`.** Windows filesystem compatibility. Colons are reserved in Windows paths.
+- **Compiled patterns are cached.** Each pattern compiles to regex once, then reuses the cached result.

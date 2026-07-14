@@ -1,0 +1,253 @@
+---
+title: Prefetch on Hover
+description: Making navigation feel instant by running loaders before the click.
+---
+
+## The Latency Floor
+
+Every first-time navigation has a minimum wait time. The user clicks a link, the router matches the route, the loader fires, the network request travels to the server and back, and only then can the component render with data. Even with the caching from Slice 4, the first visit to a route always pays the full network cost.
+
+But here's the thing: by the time a user clicks a link, they usually telegraphed that intent already. Their cursor sat on top of the link for some amount of time before the click landed. That hover is free information. If you start the loader the moment the cursor arrives instead of the moment the click lands, you get a head start. Sometimes enough of a head start that the loader has already finished by the time the click happens, and the navigation becomes instant.
+
+## Run the Loader Early, Cache the Result
+
+The naive approach would be to write a second data-fetching path, a "prefetch mode" that duplicates what `runLoaders` and `matchTree` already do. That's the wrong instinct. Prefetching isn't a new concept. It's "run the loader early and cache the result." It reuses the entire existing loader pipeline. No duplicate logic to maintain.
+
+Here's what `prefetch()` actually does:
+
+```ts router.ts
+prefetch(to: string): Promise<RouteMatch[]> {
+  const { pathname, search } = splitPath(to);
+  const key = pathname + search;
+  return this.prefetchCache.getOrCreate(key, () =>
+    runLoaders(this.match(pathname), this.state.matches),
+  );
+}
+```
+
+`this.match(pathname)` is `matchTree`, the exact function that runs on every real navigation. `runLoaders(...)` is the exact function from `loader.ts` that Slice 4 built and Slice 5 hardened. The only new code is the caching wrapper around it.
+
+## The Prefetch Cache
+
+The cache lives in `prefetch.ts` and stores promises, not data.
+
+```ts prefetch.ts
+type CacheEntry = {
+  promise: Promise<RouteMatch[]>;
+  createdAt: number;
+  rejected: boolean;
+};
+```
+
+If you cache the resolved data, you have to handle: what if two hovers happen while the first fetch is still in flight? You'd either fire a second redundant fetch or need separate bookkeeping to say "a fetch is already running, don't start another." By caching the promise itself, the first hover creates the promise and stores it. Every subsequent hover finds that same promise already in the map and returns it. `await`ing the same promise from two different places is normal JS. Both get the same result, and the underlying loader call only happens once.
+
+### peek vs getOrCreate
+
+The cache exposes two lookup methods that serve different callers:
+
+```ts prefetch.ts
+peek(key: string): Promise<RouteMatch[]> | undefined {
+  const entry = this.entries.get(key);
+  if (!entry) return undefined;
+  if (this.isExpired(entry) || entry.rejected) {
+    this.entries.delete(key);
+    return undefined;
+  }
+  return entry.promise;
+}
+```
+
+`peek` is read-only. It never creates anything. Real navigation uses `peek`: "check if something's already prefetched, but don't start a new fetch if not."
+
+```ts prefetch.ts
+getOrCreate(key: string, factory: () => Promise<RouteMatch[]>): Promise<RouteMatch[]> {
+  const cached = this.peek(key);
+  if (cached) return cached;
+
+  const promise = factory();
+  const entry: CacheEntry = {
+    promise,
+    createdAt: Date.now(),
+    rejected: false,
+  };
+
+  promise.catch(() => {
+    entry.rejected = true;
+  });
+
+  this.entries.set(key, entry);
+  return promise;
+}
+```
+
+`getOrCreate` is the hover-triggered path. If something's cached, return it. Otherwise, call the factory to kick off the loader pipeline and store the resulting promise.
+
+The `promise.catch(...)` handler does two things. It prevents the "unhandled promise rejection" warning. Prefetches often go unused (the user hovers, then moves away and never clicks), and if that promise eventually rejects with nothing awaiting it, JavaScript prints a noisy console warning. It also marks the entry as `rejected: true`, so the next `peek` finds the failed entry, deletes it, and returns `undefined`. The failure becomes a cache miss rather than serving a broken promise to a real navigation.
+
+### TTL and Lazy Cleanup
+
+Entries expire after a configurable TTL (default 30 seconds). There's no background sweeper. Expired entries get cleaned up lazily on the next `peek` or `getOrCreate` call that happens to touch them.
+
+```ts prefetch.ts
+private isExpired(entry: CacheEntry): boolean {
+  return Date.now() - entry.createdAt > this.ttlMs;
+}
+```
+
+### The Cache Key Includes Search
+
+Two different searches on the same route, `/users?page=1` and `/users?page=2`, are conceptually different pages with different data. The cache key is built from both pathname and search:
+
+```ts prefetch.ts
+export function splitPath(to: string): { pathname: string; search: string } {
+  const idx = to.indexOf("?");
+  if (idx === -1) return { pathname: to, search: "" };
+  return { pathname: to.slice(0, idx), search: to.slice(idx) };
+}
+```
+
+This means `/users?page=1` and `/users?page=2` produce different keys and live as separate cache entries. Hovering one link never contaminates the other's cached data.
+
+## How Real Navigation Consumes the Cache
+
+When the user actually clicks and the URL changes, `handleLocationChange` checks the cache first:
+
+```ts
+const key = location.pathname + location.search;
+const cached = this.prefetchCache.peek(key);
+
+if (cached) this.prefetchCache.delete(key);
+
+const resolvedMatchesPromise = cached
+  ? cached
+  : runLoaders(this.match(location.pathname), this.previousMatches);
+```
+
+`peek`, not `getOrCreate`. We don't want to start a fetch if one doesn't exist. If there's a cached entry, use its promise directly and delete it from the cache (consumed). If not, fall back to a fresh `runLoaders` call, exactly as it worked before this slice.
+
+The deletion matters. Once a real navigation has happened, the cached promise has served its purpose. If the user navigates away and back, we want a fresh loader run (subject to the normal `hasChanged` caching from Slice 4) rather than reusing a promise tied to a specific point in time.
+
+Everything below this in `handleLocationChange`, the `pendingMs` timer and calling `commitNavigation`, is unchanged from Slice 5. The commit function just awaits whatever promise it's handed, indifferent to its origin.
+
+## Intent Detection: The Debounced Hover
+
+A mouse cursor moving across the screen frequently passes over things without the user meaning to interact with them. Firing a fetch on every raw `mouseenter` would trigger network requests constantly as people move their cursor around doing nothing particular.
+
+The fix is a small debounce:
+
+```tsx
+onMouseEnter={(e) => {
+  if (prefetch === "intent") {
+    hoverTimer.current = setTimeout(() => {
+      router.prefetch(to);
+    }, prefetchDelay);
+  }
+  rest.onMouseEnter?.(e);
+}}
+onMouseLeave={(e) => {
+  if (hoverTimer.current) {
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = null;
+  }
+  rest.onMouseLeave?.(e);
+}}
+```
+
+`mouseenter` doesn't fetch immediately. It starts a timer (50ms by default). `mouseleave` cancels that timer if it fires before the delay elapses. The only way `router.prefetch(to)` actually runs is if the cursor stays on the link for the full 50ms without leaving. A cursor sweeping across a link on its way somewhere else typically spends only a handful of milliseconds over any given element, nowhere near 50ms, so it never trips the timer.
+
+Once the timer fires and the fetch starts, `mouseleave` no longer has any power to stop it. That's a deliberate simplification. Canceling an in-flight fetch adds real complexity (AbortController plumbing through the entire loader pipeline) for a case that isn't costly if left alone. If the prefetch succeeds but nobody clicks, it sits in the cache and expires via the TTL. If it fails, the `rejected` flag kicks in and the entry is immediately treated as a cache miss on the next lookup.
+
+The `Link` component accepts two new optional props:
+
+```tsx
+{
+  prefetch?: "intent" | "none";    // default: "none"
+  prefetchDelay?: number;           // default: 50ms
+}
+```
+
+Prefetch defaults to `"none"`, you have to opt in per-link. A cleanup effect clears any dangling timer on unmount to avoid prefetching for links that no longer exist on screen.
+
+## The Full Chain
+
+Hover the "Atharv" link, wait past 50ms, then click:
+
+```text
+mouseenter fires on <Link to="/user/atharv" prefetch="intent">
+        |
+        v
+hoverTimer starts (50ms)
+        |
+        v
+50ms passes without mouseleave
+        |
+        v
+setTimeout callback fires -> router.prefetch('/user/atharv')
+        |
+        v
+splitPath('/user/atharv') -> { pathname: '/user/atharv', search: '' }
+key = '/user/atharv'
+        |
+        v
+prefetchCache.getOrCreate('/user/atharv', factory)
+        |
+        v
+no existing entry -> factory() runs
+        |
+        v
+matchTree(routes, '/user/atharv') -> [rootMatch, userMatch]
+runLoaders([rootMatch, userMatch], state.matches)
+        |
+        v
+fetchUser('atharv') starts -- 600ms fetch begins NOW
+        |
+        v
+promise stored in cache under key '/user/atharv'
+        |
+        v
+... user is still hovering, nothing else happens ...
+        |
+        v
+[fetchUser resolves before the click -- promise is settled]
+        |
+        v
+user clicks
+        |
+        v
+onClick: e.preventDefault(), router.navigate('/user/atharv')
+        |
+        v
+history.push -> handleLocationChange fires
+        |
+        v
+cached = prefetchCache.peek('/user/atharv') -> found!
+prefetchCache.delete('/user/atharv') - consumed
+        |
+        v
+resolvedMatchesPromise = cached (already-resolved promise)
+        |
+        v
+commitNavigation awaits it -- resolves on next microtask, ~0ms
+        |
+        v
+state updates, UserPage renders with data already there
+        |
+        v
+User sees the page appear instantly -- no visible loading state
+```
+
+Compare that to clicking without ever hovering: `handleLocationChange` finds nothing in the cache, falls into the `runLoaders` branch fresh, and the full 600ms fetch happens starting after the click.
+
+## Why This Works
+
+The practical payoff is that every property `runLoaders` already had, parallel execution via `Promise.all`, the `hasChanged` caching so unchanged parent routes don't refetch, per-route error isolation from Slice 5, all of that comes along automatically with prefetch, for free, because it's literally running through the identical code path.
+
+If a prefetched route's loader throws, that error gets caught the exact same way a normal navigation's loader error would be caught. It attaches to `match.error`, ready for the `RouteErrorBoundary` to render if the user does eventually click through. Nobody had to write special-case error handling for "what if a prefetch fails." It doesn't need any, because as far as `runLoaders` is concerned, there's no such thing as a "prefetch" happening. It's just running loaders, like it always does.
+
+## Key Takeaways
+
+- **Prefetch is not a separate system.** It reuses `matchTree` and `runLoaders`, the same pipeline real navigation calls. No duplicate logic to maintain.
+- **Cache promises, not data.** Multiple hovers return the same in-flight promise. Dedup happens for free with zero extra bookkeeping.
+- **The cache key must include search params.** `/users?page=1` and `/users?page=2` are different pages with different data, even though they share a pathname.
+- **Debounce the hover.** A 50ms delay filters out accidental cursor passes while still giving deliberate hovers a head start. Once the timer fires, there's no cancellation, let the TTL handle cleanup.
+- **Consume on use.** Delete the cache entry once real navigation happens. The promise served its purpose; subsequent visits should trigger fresh loader runs.

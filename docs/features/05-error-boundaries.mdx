@@ -1,0 +1,197 @@
+---
+title: Error Boundaries
+description: Per-route error isolation for loader and render failures.
+---
+
+## What Happens When a Loader Throws
+
+Before error boundaries, one broken loader takes down everything:
+
+```text
+Before Error Boundaries
+
+loader() throws
+        |
+        v
+Promise.all rejects (one bad apple spoils the batch)
+        |
+        v
+runLoaders() rejects
+        |
+        v
+commitNavigation's catch block fires
+        |
+        v
+ENTIRE RouterState set to status: 'error'
+        |
+        v
+RouterProvider renders <NotFound />
+        |
+        v
+Root layout gone. Nav gone. Footer gone.
+Everything gone, because of one broken route.
+```
+
+The same problem exists on the render side. If a component throws while React is calling it as a function, and nothing catches that exception, React unmounts the tree above it. White screen.
+
+## Two Error Channels, Not One
+
+A loader error happens asynchronously, before any component exists. A render error happens synchronously, while React is in the middle of calling a component function.
+
+```text
+Loader error timeline                  Render error timeline
+
+navigate() called                      navigate() called
+        |                                       |
+        v                                       v
+matchTree() finds the route            matchTree() finds the route
+        |                                       |
+        v                                       v
+runLoaders() fires                     runLoaders() succeeds (or no loader)
+        |                                       |
+        v                                       v
+loader() throws HERE                   React calls Component() as a function
+        |                                       |
+        v                                       v
+caught in loader.ts try/catch          function body throws HERE
+        |                                       |
+        v                                       v
+attached to match.error                React's renderer intercepts it
+        |                                       |
+        v                                       v
+component never called                 getDerivedStateFromError fires
+        |                                       |
+        v                                       v
+error UI renders from a prop           error UI renders from state
+```
+
+Because these happen at structurally different moments, they need two different catching mechanisms. A `try/catch` around `await loader()` can only ever catch the first kind. A React error boundary can only ever catch the second kind.
+
+### Loader error catching
+
+```ts loader.ts
+try {
+  const loaderData = await match.loader(ctx);
+  return { ...match, loaderData, error: undefined };
+} catch (error) {
+  return { ...match, loaderData: undefined, error };
+}
+```
+
+The `try/catch` wraps each individual loader call inside the `.map()` callback. When it catches, it doesn't rethrow -- it returns a normal resolved value with `error` set instead of `loaderData`. As far as `Promise.all` is concerned, this promise succeeded. Every other loader in the same batch resolves independently.
+
+## Why This Has to Be a Class Component
+
+React Hooks cover almost every class lifecycle method with a functional equivalent. Two methods were deliberately never given hook equivalents: `getDerivedStateFromError` and `componentDidCatch`.
+
+```tsx react.tsx
+class RouteErrorBoundary extends Component<
+  RouteErrorBoundaryProps,
+  RouteErrorBoundaryState
+> {
+  state: RouteErrorBoundaryState = { renderError: undefined };
+
+  static getDerivedStateFromError(error: unknown): RouteErrorBoundaryState {
+    return { renderError: error };
+  }
+
+  componentDidCatch(error: unknown, errorInfo: ErrorInfo): void {
+    console.error("Michi caught a render error in a route:", error, errorInfo);
+  }
+
+  render(): ReactNode {
+    const error = this.props.error ?? this.state.renderError;
+
+    if (error !== undefined) {
+      const ErrorComponent = this.props.errorComponent ?? RouteError;
+      return (
+        <RouteErrorContext.Provider value={error}>
+          <ErrorComponent error={error} />
+        </RouteErrorContext.Provider>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+```
+
+`getDerivedStateFromError` is a static method React calls automatically, synchronously, the moment something inside `children` throws during render. There is no hook that can hook into "an exception was thrown somewhere in my subtree." This is a structural gap in the Hooks API.
+
+`this.props.error ?? this.state.renderError` reads both channels and picks whichever is present.
+
+## Wiring the Boundary Into the Existing Tree
+
+Every `<Outlet />` gets its own independent boundary:
+
+```tsx react.tsx
+export function Outlet({
+  fallback = <NotFound />,
+}: {
+  fallback?: React.ReactNode;
+}) {
+  const matchIndex = useContext(OutletContext);
+  const state = useRouterState();
+  const match = state.matches[matchIndex];
+
+  if (!match) return <>{fallback}</>;
+
+  return (
+    <RouteErrorBoundary
+      key={matchKey(match)}
+      error={match.error}
+      errorComponent={match.errorComponent}
+    >
+      <OutletContext.Provider value={matchIndex + 1}>
+        <match.component />
+      </OutletContext.Provider>
+    </RouteErrorBoundary>
+  );
+}
+```
+
+Picture the tree shape for `/settings/profile`, where the profile page throws:
+
+```text
+RouterProvider
+  RouteErrorBoundary (wraps __root)          <- no error, untouched
+    RootLayout (nav + footer)
+      Outlet
+        RouteErrorBoundary (wraps /settings)  <- no error, untouched
+          SettingsLayout (sidebar)
+            Outlet
+              RouteErrorBoundary (wraps profile) <- CATCHES HERE
+                ProfilePage -> throws
+```
+
+React walks up the tree looking for the nearest ancestor error boundary and stops at the first one it finds. The root layout's nav never re-renders because of this failure.
+
+## Retrying Without Leaving the Route
+
+The `key` prop on `RouteErrorBoundary` resets error state. React's rule: change an element's `key`, and React unmounts the old instance entirely, mounting a fresh one with fresh state.
+
+```ts react.tsx
+function matchKey(match: RouteMatch): string {
+  const sorted = Object.keys(match.params)
+    .sort()
+    .reduce(
+      (acc, k) => {
+        acc[k] = match.params[k]!;
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+  return `${match.routeId}:${JSON.stringify(sorted)}`;
+}
+```
+
+`matchKey` produces a string that's identical as long as the route and its params haven't changed, different the moment either one does. Params get sorted before serializing so `{ id: 'a', tab: 'b' }` and `{ tab: 'b', id: 'a' }` produce the same key.
+
+The loader cache reinforces this: even an unchanged route retries its loader if the last attempt failed. Click the same broken link twice, and the second click gets a fresh attempt.
+
+## Key Takeaways
+
+- **Loader errors and render errors are different failures with different catching mechanisms.** A `try/catch` catches the first. A React error boundary catches the second.
+- **`getDerivedStateFromError` has no hook equivalent, by design.** Any error boundary component must be a class component.
+- **Every `<Outlet />` gets its own boundary, which is what makes isolation automatic.** React stops walking up the tree at the first boundary it finds.
+- **Changing a `key` is how you reset error state.** React treats a changed key as a brand new element.

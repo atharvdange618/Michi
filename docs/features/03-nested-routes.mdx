@@ -1,0 +1,181 @@
+---
+title: Nested Routes
+description: Persistent layouts, the Outlet pattern, and route trees.
+---
+
+## The Navbar Problem
+
+Think of your app like a collection of separate cabins in the woods. To go from the kitchen to the bedroom, you have to pack your things, step outside into the cold, walk across the yard, and enter the bedroom cabin. The kitchen cabin shuts down behind you. Your coffee mug, the music playing, the warmth: gone.
+
+That is what happens when every page component remounts on navigation. The navbar unmounts. The sidebar unmounts. Scroll position is lost. Any animation mid-flight gets killed.
+
+What you actually want is a single house. The hallway, the kitchen, and the bedroom share the same roof. You walk from one room to another without leaving the building.
+
+In a router, that shared wall is a layout. A component that wraps other components and never unmounts, with a hole in the middle where the current page renders. That hole is `<Outlet />`.
+
+## From Flat List to Tree
+
+Routes start as a flat array:
+
+```ts
+new Router([
+  { path: "/", component: IndexPage },
+  { path: "/about", component: AboutPage },
+  { path: "/user/$id", component: UserPage },
+]);
+```
+
+The fix is to express routes as a tree:
+
+```ts
+new Router([
+  {
+    path: "__root",
+    component: RootLayout,
+    children: [
+      { path: "/", component: IndexPage },
+      { path: "/about", component: AboutPage },
+      { path: "/user/$id", component: UserPage },
+    ],
+  },
+]);
+```
+
+One line changed: `children`. The root layout wraps everything. When you navigate to `/about`, the router finds the root layout and the About component -- two matches, not one.
+
+```text
+Flat List                          Tree
+
+/               -> IndexPage        __root
+/about          -> AboutPage          +-- /           -> IndexPage
+/user/$id       -> UserPage           +-- /about      -> AboutPage
+                                      +-- /user/$id   -> UserPage
+```
+
+## matchTree: Walking the Route Tree
+
+The matching function walks a tree and returns a flat array of matches. The route definitions are a tree, but the matched result is flat because React renders top to bottom, linearly.
+
+Layout routes get special treatment. Any path starting with `_` is a layout route: `__root` for the root layout, `_auth` for pathless auth layouts. They always match -- you do not test them against the pathname.
+
+`__root` always contributes to the match chain. It is the outermost shell. But other layout routes (`_auth`, `_dashboard`, etc.) only contribute when a descendant actually matches. If no child matches, the layout is skipped, letting sibling routes try.
+
+For regular routes with children, the logic checks children first. If a child matches, the parent acts as a layout wrapper. If no child matches, the route falls through to its own leaf matching.
+
+### Example: /settings/profile
+
+```text
+matchTree called with '/settings/profile'
+
+  __root -> layout route -> always matches -> layoutMatch created
+    recurse into children with '/settings/profile'
+    '/' -> no match
+    '/about' -> no match
+    '/settings' -> has children, recurse into them
+      '/settings/profile' -> match! -> returns [profileMatch]
+    -> '/settings' becomes layout -> returns [settingsMatch, profileMatch]
+  -> returns [rootMatch, settingsMatch, profileMatch]
+```
+
+Three levels. Each one renders inside the previous one's `<Outlet />`.
+
+## The Outlet Pattern: Just a Counter
+
+Strip away everything and `<Outlet />` is just this:
+
+```tsx react.tsx
+export function Outlet({
+  fallback = <NotFound />,
+}: {
+  fallback?: React.ReactNode;
+}) {
+  const matchIndex = useContext(OutletContext);
+  const state = useRouterState();
+  const match = state.matches[matchIndex];
+
+  if (!match) return <>{fallback}</>;
+
+  return (
+    <OutletContext.Provider value={matchIndex + 1}>
+      <match.component />
+    </OutletContext.Provider>
+  );
+}
+```
+
+It reads a number from context, uses that number to index into `state.matches`, and renders whatever component is at that index. Then it bumps the number by one for any nested Outlet below it.
+
+`RouterProvider` renders `matches[0]` and sets context to `1`. Each `<Outlet />` reads its index, renders that match, and increments for the next level.
+
+Navigate to `/about`:
+
+```tsx
+state.matches = [
+  { routeId: "__root", component: RootLayout }, // index 0
+  { routeId: "/about", component: AboutPage }, // index 1
+];
+```
+
+`RouterProvider` renders `matches[0]` (RootLayout) and sets context to `1`. RootLayout renders its nav, then hits `<Outlet />`. That Outlet reads `1` from context, renders `matches[1]` (AboutPage), and sets context to `2`.
+
+Navigate to `/user/atharv`: `RouterProvider` still renders `matches[0]` which is still `RootLayout`. React sees the same component at the same position in the tree so it does not remount it. The nav stays alive. Only the Outlet content changes.
+
+## Layout Routes vs Regular Routes
+
+A regular route has a path segment that corresponds to something in the URL. `/about` matches when the URL is `/about`.
+
+A layout route has no matching criteria at all. `__root` does not match any URL segment. It always matches, unconditionally, and wraps everything below it.
+
+The `isLayoutRoute` helper detects any path starting with `_`:
+
+```ts matcher.ts
+function isLayoutRoute(path: string): boolean {
+  return path.startsWith("_");
+}
+```
+
+This covers both `__root` (the root layout) and `_auth`, `_dashboard`, etc. (pathless layouts).
+
+```text
+__root
++-- _auth              (pathless layout)
+|   +-- /dashboard     (protected page)
++-- /settings          (public page with its own layout)
+|   +-- /settings/profile
++-- /about             (public page)
+```
+
+Navigate to `/about`: the matcher tries `_auth` first. No child matches. `_auth` is skipped. `/about` matches. Result: `[rootMatch, aboutMatch]`. No auth layout in the chain.
+
+Navigate to `/dashboard`: `_auth` recurses into children. `/dashboard` matches. `_auth` contributes. Result: `[rootMatch, authMatch, dashboardMatch]`.
+
+## The Full Chain: Nested Navigation
+
+When you navigate to `/settings/profile`:
+
+```text
+1. router.navigate('/settings/profile')
+2. history.push('/settings/profile')
+3. matchTree called with '/settings/profile'
+4. __root -> always matches -> layoutMatch created
+   recurse into children
+   '/settings' -> has children, recurse
+     '/settings/profile' -> match!
+   -> settingsMatch created (layout for children)
+5. matches = [rootMatch, settingsMatch, profileMatch]
+6. React re-renders RouterProvider
+7. matches[0] = RootLayout -> renders nav + <Outlet />
+8. <Outlet /> reads OutletContext = 1
+   matches[1] = SettingsLayout -> renders sidebar + <Outlet />
+9. <Outlet /> reads OutletContext = 2
+   matches[2] = ProfilePage -> renders inside settings
+10. RootLayout stays mounted, sidebar stays mounted
+    Only the innermost Outlet content swaps
+```
+
+## Key Takeaways
+
+- **The tree solves ownership, not URLs.** Tree nesting controls layout ownership, not URL structure.
+- **matchTree flattens the tree on purpose.** React renders linearly. The tree config becomes a flat array of matches, ordered depth-first.
+- **React's reconciler does the layout stability.** Same component at same position means no remount.
+- **Layout routes are conditional, not automatic.** Unlike `__root`, pathless layouts only contribute when a child matches.

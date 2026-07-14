@@ -1,0 +1,200 @@
+---
+title: Data Loaders
+description: Render-as-you-fetch with parallel execution and race condition guards.
+---
+
+## The Data Problem
+
+Every route we have built so far renders immediately with zero data. The component mounts, then fetches, then re-renders with the result. That is fetch-on-render. The problem: the waterfall.
+
+```text
+fetch-on-render (the old way)
+
+Navigate to /user/atharv
+        |
+        v
+Router matches route
+        |
+        v
+UserPage renders (user is undefined)
+        |
+        v
+useEffect fires
+        |
+        v
+fetch('/api/user/atharv') starts
+        |
+        v
+Response comes back
+        |
+        v
+setState(user)
+        |
+        v
+UserPage re-renders with data
+```
+
+Two renders for one navigation. The first render is half-baked.
+
+Loaders flip this. Data fetches happen before the component renders. By the time React mounts `UserPage`, `useLoaderData()` already has the user object. One render, full data, no spinner flash.
+
+```text
+render-as-you-fetch (what loaders enable)
+
+Navigate to /user/atharv
+        |
+        v
+Router matches route
+        |
+        v
+loader({ params: { id: 'atharv' } }) fires
+        |
+        v
+fetch resolves
+        |
+        v
+Router updates state with loaderData
+        |
+        v
+UserPage renders (user is already there)
+```
+
+## Writing a Loader
+
+A loader is a function that returns data. It runs before the component mounts and receives the route's params and search params:
+
+```ts
+export async function loader({ params }: LoaderContext<{ id: string }>) {
+  return fetchUser(params.id);
+}
+```
+
+Wire it into your route definition:
+
+```ts
+import UserPage, { loader as userLoader } from './routes/user/$id';
+
+{ path: '/user/$id', component: UserPage, loader: userLoader }
+```
+
+## useLoaderData: The OutletContext Trick
+
+```ts react.tsx
+export function useLoaderData<T = unknown>(): T {
+  const state = useRouterState();
+  const matchIndex = useContext(OutletContext) - 1;
+  const match = state.matches[matchIndex];
+  return match?.loaderData as T;
+}
+```
+
+`OutletContext` holds the index of the NEXT match to render. When `UserPage` is mounted by an `<Outlet />` at depth `1`, `OutletContext` inside `UserPage` is `2`. So `useContext(OutletContext) - 1` reverses that to get the current match's index.
+
+No prop drilling. No context per-route. The same depth counter that powers `<Outlet />` also powers data access.
+
+## runLoaders: Parallel Execution
+
+The `runLoaders` function takes the array of matched routes and runs all their loaders simultaneously:
+
+```ts loader.ts
+export async function runLoaders(
+  pendingMatches: RouteMatch[],
+  previousMatches: RouteMatch[],
+): Promise<RouteMatch[]> {
+  return Promise.all(
+    pendingMatches.map(async (match, index) => {
+      const prev = previousMatches[index];
+      if (!hasChanged(prev, match)) {
+        return { ...match, loaderData: prev!.loaderData };
+      }
+      if (!match.loader) return match;
+      const ctx: LoaderContext = { params: match.params, search: {} };
+      const loaderData = await match.loader(ctx);
+      return { ...match, loaderData };
+    }),
+  );
+}
+```
+
+`Promise.all` fires all loaders simultaneously, not sequentially. If `__root` has a loader and `/user/$id` has a loader, both requests go out at the same time. The navigation waits for the slowest one, not the sum of all of them.
+
+```text
+Parallel (Promise.all):         Sequential (for...of):
+
+  rootLoader (200ms)              rootLoader (200ms)
+  userLoader (600ms)                    |
+  |                                     v
+  v                              userLoader (600ms)
+  Both fire at t=0
+  |
+  v
+  Total: 600ms (slowest)         Total: 800ms (sum of all)
+```
+
+## Loader Caching
+
+The `hasChanged` function compares each pending match against the previous match:
+
+```ts loader.ts
+function hasChanged(prev: RouteMatch | undefined, next: RouteMatch): boolean {
+  if (!prev) return true;
+  if (prev.routeId !== next.routeId) return true;
+  if (JSON.stringify(prev.params) !== JSON.stringify(next.params)) return true;
+  return false;
+}
+```
+
+If the route and its params have not changed, the loader is skipped and the previous `loaderData` is reused. Navigate from `/user/atharv` to `/user/atharv` and zero network requests fire.
+
+## The Race Condition Guard
+
+Async loaders can cause race conditions. You click Atharv, a 600ms fetch starts. Before it resolves, you click John, another 600ms fetch starts. If John's fetch resolves first, then Atharv's resolves, you would end up showing Atharv's data even though you are on John's URL.
+
+The solution is a navigation counter:
+
+```ts
+private navigationId = 0;
+```
+
+Every time the URL changes, `navigationId` increments. After loaders resolve, the router checks: is this navigation's id still the current one?
+
+```text
+Race Condition Guard
+
+navId=2 starts, fetchUser('atharv') running
+navId=3 starts, fetchUser('john') running
+this.navigationId is now 3
+
+john resolves first
+navId(3) === navigationId(3) -> commits, John renders
+
+atharv resolves
+navId(2) !== navigationId(3) -> discarded, nothing happens
+```
+
+## The Pending Indicator: Avoiding Spinner Flash
+
+Immediately showing a loading state on every navigation causes spinner flash. If a loader resolves in 50ms, the user never sees the loading state, but React still unmounts the old page, shows a spinner for one frame, then mounts the new page.
+
+The solution: wait a threshold (typically 200-500ms) before showing loading. If the loader resolves before the threshold, the user sees a clean swap. If it is slow, they get a spinner, and it stays visible long enough to not feel like a glitch.
+
+```text
+Fast loader (50ms):
+  t=0     navigate, timer starts
+  t=50    loader resolves, timer cleared
+  result: clean swap, no spinner shown
+
+Slow loader (2000ms):
+  t=0     navigate, timer starts
+  t=1000  timer fires, loading state shown
+  t=2000  loader resolves
+  result: loading shown for ~1000ms
+```
+
+## Key Takeaways
+
+- **Loaders run at navigation time, not render time.** The fetch starts when you click the link, not when the component mounts.
+- **Promise.all for parallel execution.** All matched route loaders fire simultaneously.
+- **navigationId prevents stale data.** Rapid navigation can result in out-of-order loader resolutions. The counter ensures only the most recent navigation's results get committed.
+- **Cache by routeId + params.** If the route and its params have not changed, the loader does not re-run.
+- **Show loading UI only when the loader is slow.** Immediate loading state on every navigation causes spinner flash.

@@ -1,0 +1,161 @@
+---
+title: History API
+description: How client-side navigation works without page reloads.
+---
+
+## The Default Behavior You're Fighting
+
+Think of your browser like a strict librarian. Every time you ask for a page, the librarian walks to the shelf, grabs the whole book, brings it back, and replaces your entire desk with a new one. The old desk -- your running JavaScript, your open tabs, your scroll position, your state -- is gone. Fresh start, every single time.
+
+That's a full page navigation. The browser throws away your running JavaScript, clears memory, fires an HTTP request, downloads HTML, parses it, boots JavaScript again from scratch. React re-initializes. All your state is gone.
+
+Client-side routing breaks this cycle entirely. The page never unloads. React keeps running. The URL changes but no HTTP request goes out. You are not asking the librarian for a new book at all. You are just flipping to a different chapter.
+
+## The History API
+
+The browser exposes `window.history`, an interface that lets you manipulate the browser's navigation history programmatically. The two methods that matter most are `pushState` and `replaceState`.
+
+```js
+window.history.pushState(null, "", "/about");
+window.history.replaceState(null, "", "/about");
+```
+
+Both of these change the URL in the address bar instantly. No page reload. No HTTP request. React keeps running exactly where it was. The difference is what they do to the history stack.
+
+`pushState(state, title, url)` takes three params. The first, `state`, is arbitrary data you can read later via `history.state` -- most routers pass `null`. The second, `title`, is largely ignored by browsers in practice. The third, `url`, is the new URL.
+
+Picture the browser's history as a literal stack of cards. Each card is a URL you visited.
+
+```text
+After pushState('/about')        After replaceState('/about')
+
+   +----------+                     +----------+
+   |  /about  |  <- current         |  /about  |  <- current (replaced /)
+   +----------+                     +----------+
+   |    /     |  <- previous           (/ is gone)
+   +----------+
+
+   Back button goes to /           Back button skips /about
+```
+
+`pushState` adds a new card on top of the stack. The old URL is still there underneath. The back button can go back to it.
+
+`replaceState` swaps the current card. The previous URL is gone from that position. Back button takes you to whatever was before it.
+
+### When to use which
+
+Use `pushState` for normal navigation. User clicked a link, they went somewhere new, they should be able to go back.
+
+Use `replaceState` for redirects. If `/old-route` redirects to `/new-route`, you do not want the user pressing back to land on the redirect again and get sent forward immediately. Use `replaceState` to overwrite it.
+
+Another place `replaceState` shines: URL updates that are not conceptually new pages. A search input that updates `?query=` as you type should use `replaceState`. Otherwise you create a history entry for every single keystroke, and pressing back becomes a nightmare.
+
+### The popstate quirk
+
+The browser has a `popstate` event that fires when the URL changes. Sounds perfect, right? Listen to it, re-render when it fires.
+
+The problem is `popstate` does NOT fire when you call `pushState` or `replaceState` yourself. It only fires when the user navigates through existing history using the browser's back and forward buttons.
+
+The reasoning makes sense: when you call `pushState`, you already know the URL changed. You just did it. The browser notifying you about something you initiated would be pointless. But when the user hits back, that is external. The browser is telling you "the URL just changed and you did not ask for it."
+
+So routers handle this with a two-track approach:
+
+```text
+Track 1: Programmatic navigation        Track 2: Browser back/forward
+
+router.navigate('/about')               User presses back button
+        |                                       |
+        v                                       v
+history.push('/about')                  popstate event fires
+        |                                       |
+        v                                       |
+window.history.pushState(...)           (fires notify)
+        |                                       |
+        v                                       v
+this.notify() <---------------------------------+
+```
+
+After every `pushState` call, you call `notify()` yourself. After every `popstate` event fires, you call `notify()` too. Both paths converge at the same notification.
+
+## The Core Router Loop
+
+Once you have History solved, the router's job is to listen for those notifications and update what React renders:
+
+```text
+URL changes (pushState or popstate)
+        |
+        v
+History.notify() fires
+        |
+        v
+Router listener receives new location
+        |
+        v
+Router runs match(pathname)
+        |
+        v
+Finds which route definition matches the URL
+        |
+        v
+Builds new RouterState with matched component
+        |
+        v
+Router.notify() fires (tells React)
+        |
+        v
+React re-renders RouterProvider
+        |
+        v
+New page component renders on screen
+```
+
+## Wiring It to React
+
+The Router is a plain TypeScript class sitting completely outside React. React has no idea when its internal state changes. You need a bridge.
+
+The naive approach -- `useState` + `useEffect` -- has two real problems:
+
+1. **Subscription gap** -- `useEffect` runs after React finishes painting. There is a window between when the component first renders and when the subscription actually gets registered. If the router state changes in that gap, you miss it.
+
+2. **UI tearing in concurrent mode** -- React 18 can pause a render halfway through. Component A reads router state as `/home`, React pauses, user clicks a link, state becomes `/about`, React resumes, Component B reads `/about`. Same render pass, inconsistent UI.
+
+The solution is `useSyncExternalStore`:
+
+```tsx react.tsx
+const state = useSyncExternalStore(
+  (cb) => router.subscribe(cb), // how to subscribe
+  () => router.getState(), // how to read the state
+  () => router.getState(), // initial snapshot for SSR
+);
+```
+
+It forces React to read the store synchronously during the render, guaranteeing every component in the same render pass gets the same snapshot. Tearing becomes impossible by design.
+
+One critical constraint: `getSnapshot` must return the same reference if nothing changed. React uses `Object.is` for comparison. If you returned `{ ...router.getState() }` every time, you would create a new object on every call and trigger infinite re-renders.
+
+## The Link Component
+
+The `<Link>` component is where this all starts on a user click:
+
+```tsx react.tsx
+<a
+  href={to}
+  onClick={(e) => {
+    e.preventDefault(); // cancel the browser's default reload
+    router.navigate(to); // handle it ourselves
+  }}
+>
+  {children}
+</a>
+```
+
+`e.preventDefault()` is the answer to "how does it not reload." The browser's default behavior for an anchor click is a full page navigation. `preventDefault` cancels it entirely. Then `router.navigate(to)` kicks off the chain.
+
+Keeping `href={to}` even though we prevent the default matters. Right-click and "open in new tab" still works. Screen readers can read the destination. Search engine crawlers can follow the link. This is a WCAG accessibility requirement.
+
+## Key Takeaways
+
+- **Rule of thumb for History:** If the user should be able to press Back to get here, use `pushState`. If Back should skip over this URL (redirects, search-as-you-type), use `replaceState`.
+- **The popstate trap:** `popstate` only fires on browser back/forward. After every programmatic navigation, call your router's notify manually.
+- **Ditch useState for external stores:** `useState + useEffect` has a subscription gap and tears in React 18 concurrent mode. Use `useSyncExternalStore` instead.
+- **Accessibility isn't optional.** Always render an `<a>` tag with `href`, even if you `preventDefault` on click.
