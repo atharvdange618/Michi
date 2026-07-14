@@ -1,3 +1,5 @@
+.mimocode
+
 # Design spec
 design-spec.md
 
@@ -24,3 +26,7 @@ dist/
 /notes
 AGENTS.md
 CONTEXT.md
+.blume/
+.astro/
+src/
+astro.config.mjs

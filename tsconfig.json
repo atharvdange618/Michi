@@ -12,5 +12,11 @@
     "strict": true,
     "target": "ES2022",
     "verbatimModuleSyntax": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".blume",
+    "src"
+  ]
 }
