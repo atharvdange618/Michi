@@ -1,0 +1,62 @@
+---
+import RootLayout from "blume/components/layout/RootLayout.astro";
+import data from "blume:data";
+import { getCollection } from "astro:content";
+
+const routeById = new Map(data.routes.map((route) => [route.id, route.path]));
+
+const posts = (await getCollection("docs"))
+  .filter((entry) => entry.data.type === "blog" && !entry.data.draft)
+  .map((entry) => ({
+    date: entry.data.date,
+    description: entry.data.description,
+    href: routeById.get(entry.id),
+    title: entry.data.title,
+  }))
+  .toSorted((a, b) => Number(new Date(b.date)) - Number(new Date(a.date)));
+---
+
+<RootLayout
+  site={{ title: data.config.title, description: data.config.description }}
+  logo={data.config.logo}
+  banner={data.config.banner}
+  navigation={data.navigation}
+  page={{ title: "Blog", route: "/blog" }}
+  headings={[]}
+  themeMode={data.config.theme.mode}
+  searchEnabled={data.config.search.enabled}
+  indexable={true}
+>
+  <div class="mx-auto max-w-3xl px-6 py-12">
+    <h1 class="mb-2 text-3xl font-bold text-foreground">Blog</h1>
+    <p class="mb-10 text-muted-foreground">
+      Writing about building a client-side router from scratch.
+    </p>
+
+    <div class="flex flex-col gap-8">
+      {
+        posts.map((post) => (
+          <a
+            href={post.href}
+            class="group rounded-blume border border-border p-6 transition-colors hover:bg-muted/50"
+          >
+            <time
+              class="text-sm text-muted-foreground"
+              datetime={new Date(post.date).toISOString()}
+            >
+              {new Date(post.date).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </time>
+            <h2 class="mt-1 text-xl font-semibold text-foreground group-hover:text-accent">
+              {post.title}
+            </h2>
+            <p class="mt-2 text-muted-foreground">{post.description}</p>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+</RootLayout>
