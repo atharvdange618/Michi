@@ -1,0 +1,9 @@
+:root [data-blume-banner] {
+  background-color: #1a1a1a !important;
+  color: #faf8f5 !important;
+}
+
+:root[data-theme="dark"] [data-blume-banner] {
+  background-color: #faf8f5 !important;
+  color: #1a1a1a !important;
+}
