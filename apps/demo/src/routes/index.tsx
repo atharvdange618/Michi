@@ -81,6 +81,12 @@ const features = [
     to: "/prefetch",
     tag: "Slice 6",
   },
+  {
+    title: "Search Params",
+    desc: "?page=1&sort=name as typed, validated state in the URL",
+    to: "/users?page=1",
+    tag: "Slice 7",
+  },
 ];
 
 export default function IndexPage() {

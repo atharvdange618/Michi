@@ -21,7 +21,12 @@ const structuredData = {
 
 const navSections: Array<{
   label: string;
-  links: Array<{ to: string; label: string; prefetch?: "intent" | "none"; external?: boolean }>;
+  links: Array<{
+    to: string;
+    label: string;
+    prefetch?: "intent" | "none";
+    external?: boolean;
+  }>;
 }> = [
   {
     label: "Core",
@@ -64,10 +69,21 @@ const navSections: Array<{
     ],
   },
   {
+    label: "Search Params",
+    links: [
+      { to: "/users?page=1", label: "Users" },
+      { to: "/users?page=abc", label: "Users (bad page)" },
+    ],
+  },
+  {
     label: "Links",
     links: [
       { to: "https://michi-docs.vercel.app", label: "Docs", external: true },
-      { to: "https://github.com/atharvdange618/Michi", label: "GitHub", external: true },
+      {
+        to: "https://github.com/atharvdange618/Michi",
+        label: "GitHub",
+        external: true,
+      },
     ],
   },
 ];

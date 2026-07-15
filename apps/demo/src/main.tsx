@@ -22,6 +22,10 @@ import RootLayout from "./routes/__root";
 import SettingsLayout from "./routes/settings";
 import PrefetchExplainerPage from "./routes/prefetch";
 import PrefetchDemoTarget, { loader as prefetchDemoLoader } from "./routes/prefetch-demo";
+import UsersPage, {
+  loader as usersLoader,
+  validateSearch as usersValidateSearch,
+} from "./routes/users";
 
 const router = new Router([
   {
@@ -72,6 +76,12 @@ const router = new Router([
         path: "/prefetch-demo",
         component: PrefetchDemoTarget,
         loader: prefetchDemoLoader,
+      },
+      {
+        path: "/users",
+        component: UsersPage,
+        loader: usersLoader,
+        validateSearch: usersValidateSearch,
       },
     ],
   },
