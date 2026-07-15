@@ -76,6 +76,12 @@ const features = [
     tag: "Slice 5",
   },
   {
+    title: "Error Isolation",
+    desc: "Child errors don't crash parent layouts - useRouteError() hook",
+    to: "/settings/billing-error",
+    tag: "Slice 5",
+  },
+  {
     title: "Prefetch on Hover",
     desc: 'Hover a link with prefetch="intent" to run its loader early',
     to: "/prefetch",
@@ -86,6 +92,12 @@ const features = [
     desc: "?page=1&sort=name as typed, validated state in the URL",
     to: "/users?page=1",
     tag: "Slice 7",
+  },
+  {
+    title: "404 Not Found",
+    desc: "Navigate to a route that doesn't match any pattern",
+    to: "/this-does-not-exist",
+    tag: "Slice 2",
   },
 ];
 
