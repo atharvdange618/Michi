@@ -5,6 +5,7 @@ export type {
   ParsedLocation,
   LoaderContext,
   RouterOptions,
+  NavigateOptions,
 } from "./types";
 export { Router } from "./router";
 export {
@@ -14,6 +15,7 @@ export {
   useRouterState,
   useParams,
   useLoaderData,
+  useSearch,
   useRouteError,
   useRouter,
   type LinkProps,
