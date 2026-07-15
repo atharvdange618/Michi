@@ -70,6 +70,13 @@ export function useLoaderData<T = unknown>(): T {
   return match?.loaderData as T;
 }
 
+export function useSearch<T = unknown>(): T {
+  const state = useRouterState();
+  const matchIndex = useContext(OutletContext) - 1;
+  const match = state.matches[matchIndex];
+  return match?.search as T;
+}
+
 export function useRouteError(): unknown {
   const error = useContext(RouteErrorContext);
   return error === NO_ERROR ? undefined : error;
