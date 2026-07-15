@@ -40,5 +40,5 @@
     "unicorn/catch-error-name": "off",
     "unicorn/prefer-string-raw": "off"
   },
-  "ignorePatterns": ["node_modules", "dist", "*.test.ts", "*.test.tsx"]
+  "ignorePatterns": ["node_modules", "dist"]
 }

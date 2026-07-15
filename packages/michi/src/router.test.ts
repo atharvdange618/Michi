@@ -13,9 +13,7 @@ function resetMockPathname() {
 }
 
 const MockHistory = vi.hoisted(() => {
-  const listeners = new Set<
-    (loc: { pathname: string; search: string; hash: string }) => void
-  >();
+  const listeners = new Set<(loc: { pathname: string; search: string; hash: string }) => void>();
 
   function parseUrl(to: string): {
     pathname: string;
@@ -24,13 +22,10 @@ const MockHistory = vi.hoisted(() => {
   } {
     const questionIdx = to.indexOf("?");
     const hashIdx = to.indexOf("#");
-    const endPath =
-      questionIdx !== -1 ? questionIdx : hashIdx !== -1 ? hashIdx : to.length;
+    const endPath = questionIdx !== -1 ? questionIdx : hashIdx !== -1 ? hashIdx : to.length;
     const pathname = to.slice(0, endPath);
     const search =
-      questionIdx !== -1
-        ? to.slice(questionIdx, hashIdx !== -1 ? hashIdx : to.length)
-        : "";
+      questionIdx !== -1 ? to.slice(questionIdx, hashIdx !== -1 ? hashIdx : to.length) : "";
     const hash = hashIdx !== -1 ? to.slice(hashIdx) : "";
     return { pathname, search, hash };
   }
@@ -44,9 +39,7 @@ const MockHistory = vi.hoisted(() => {
     getLocation() {
       return parseUrl(mockPathname);
     }
-    subscribe(
-      cb: (loc: { pathname: string; search: string; hash: string }) => void,
-    ) {
+    subscribe(cb: (loc: { pathname: string; search: string; hash: string }) => void) {
       listeners.add(cb);
       return () => {
         listeners.delete(cb);
@@ -65,10 +58,7 @@ afterEach(() => {
 
 function waitForIdle(router: Router, timeoutMs = 2000): Promise<void> {
   return new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(
-      () => reject(new Error("waitForIdle timeout")),
-      timeoutMs,
-    );
+    const timeout = setTimeout(() => reject(new Error("waitForIdle timeout")), timeoutMs);
     const unsub = router.subscribe(() => {
       if (router.getState().status === "idle") {
         clearTimeout(timeout);
@@ -243,9 +233,7 @@ describe("Loaders", () => {
     router.navigate("/user/atharv");
     await waitForIdle(router);
 
-    expect(loader).toHaveBeenCalledWith(
-      expect.objectContaining({ params: { id: "atharv" } }),
-    );
+    expect(loader).toHaveBeenCalledWith(expect.objectContaining({ params: { id: "atharv" } }));
   });
 
   it("sets status to loading then idle on navigation", async () => {
@@ -352,21 +340,14 @@ describe("Loaders", () => {
         path: "__root",
         component: () => null,
         loader: rootLoader,
-        children: [
-          { path: "/page", component: () => null, loader: childLoader },
-        ],
+        children: [{ path: "/page", component: () => null, loader: childLoader }],
       },
     ];
 
     const router = new Router(routesWithLoaders);
     await waitForIdle(router);
 
-    expect(callOrder).toEqual([
-      "root-start",
-      "child-start",
-      "root-end",
-      "child-end",
-    ]);
+    expect(callOrder).toEqual(["root-start", "child-start", "root-end", "child-end"]);
     expect(router.getState().matches[0]!.loaderData).toBe("root-data");
     expect(router.getState().matches[1]!.loaderData).toBe("child-data");
   });
@@ -397,6 +378,51 @@ describe("Loaders", () => {
     expect(loader).toHaveBeenCalledTimes(2);
   });
 
+  it("preserves match object identity for unchanged routes", async () => {
+    const rootLoader = vi.fn().mockResolvedValue({ role: "admin" });
+    const childLoader = vi.fn().mockResolvedValue({ name: "atharv" });
+    const routesWithLoaders: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        loader: rootLoader,
+        children: [{ path: "/user/$id", component: () => null, loader: childLoader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoaders);
+    await waitForIdle(router);
+
+    router.navigate("/user/atharv");
+    await waitForIdle(router);
+    const firstRootMatch = router.getState().matches[0];
+
+    // Navigate to different child — root match should keep identity
+    router.navigate("/user/john");
+    await waitForIdle(router);
+    const secondRootMatch = router.getState().matches[0];
+
+    expect(secondRootMatch).toBe(firstRootMatch);
+
+    // Same URL, same params — match identity preserved
+    router.navigate("/user/john");
+    await waitForIdle(router);
+    const thirdRootMatch = router.getState().matches[0];
+    const thirdChildMatch = router.getState().matches[1];
+
+    expect(thirdRootMatch).toBe(firstRootMatch);
+
+    // Capture child match, navigate away and back — different object
+    // (prev for child is now the /user/john match, not the original)
+    router.navigate("/user/atharv");
+    await waitForIdle(router);
+    const fourthChildMatch = router.getState().matches[1];
+
+    // Child is a new object (different prev), but root still same
+    expect(router.getState().matches[0]).toBe(firstRootMatch);
+    expect(fourthChildMatch).not.toBe(thirdChildMatch);
+  });
+
   it("reuses loaderData for parent route when only child changes", async () => {
     const rootLoader = vi.fn().mockResolvedValue({ role: "admin" });
     const childLoader = vi.fn().mockResolvedValue({ name: "atharv" });
@@ -405,9 +431,7 @@ describe("Loaders", () => {
         path: "__root",
         component: () => null,
         loader: rootLoader,
-        children: [
-          { path: "/user/$id", component: () => null, loader: childLoader },
-        ],
+        children: [{ path: "/user/$id", component: () => null, loader: childLoader }],
       },
     ];
 
@@ -578,7 +602,7 @@ describe("Prefetch integration", () => {
 });
 
 describe("Search params", () => {
-  it.skip("passes search params to loader context", async () => {
+  it("passes search params to loader context", async () => {
     const loader = vi.fn().mockResolvedValue(null);
     const routesWithLoader: RouteDefinition[] = [
       {
@@ -604,7 +628,7 @@ describe("Search params", () => {
     );
   });
 
-  it.skip("prefetch passes search params to loader context", async () => {
+  it("prefetch passes search params to loader context", async () => {
     const loader = vi.fn().mockResolvedValue({ data: "prefetched" });
     const routesWithLoader: RouteDefinition[] = [
       {
@@ -625,5 +649,260 @@ describe("Search params", () => {
         search: { search: "test" },
       }),
     );
+  });
+
+  it("validateSearch receives raw params and its output goes to loader context", async () => {
+    const validateSearch = vi.fn().mockReturnValue({ page: 1 });
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithValidator: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/paged", component: () => null, loader, validateSearch }],
+      },
+    ];
+
+    const router = new Router(routesWithValidator);
+    await waitForIdle(router);
+
+    mockPathname = "/paged?page=5";
+    router.navigate("/paged?page=5");
+    await waitForIdle(router);
+
+    expect(validateSearch).toHaveBeenCalledWith({ page: "5" });
+    expect(loader).toHaveBeenCalledWith(expect.objectContaining({ search: { page: 1 } }));
+  });
+
+  it("validateSearch throwing puts error on match and skips loader", async () => {
+    const validateSearch = vi.fn().mockImplementation(() => {
+      throw new Error("invalid page param");
+    });
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithValidator: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/strict", component: () => null, loader, validateSearch }],
+      },
+    ];
+
+    const router = new Router(routesWithValidator);
+    await waitForIdle(router);
+
+    mockPathname = "/strict?page=abc";
+    router.navigate("/strict?page=abc");
+    await waitForIdle(router);
+
+    const state = router.getState();
+    const match = state.matches.find((m) => m.routeId === "/strict");
+    expect(match).toBeDefined();
+    expect(match!.error).toBeInstanceOf(Error);
+    expect((match!.error as Error).message).toBe("invalid page param");
+    expect(match!.search).toBeUndefined();
+    expect(loader).not.toHaveBeenCalled();
+  });
+
+  it("rawSearch is set on every match", async () => {
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/inspect", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    mockPathname = "/inspect?color=blue&size=10";
+    router.navigate("/inspect?color=blue&size=10");
+    await waitForIdle(router);
+
+    const state = router.getState();
+    for (const match of state.matches) {
+      expect(match.rawSearch).toEqual({ color: "blue", size: "10" });
+    }
+  });
+
+  it("same URL with same search params does not re-run loader", async () => {
+    const loader = vi.fn().mockResolvedValue({ data: "once" });
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/stable", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    mockPathname = "/stable?q=hello";
+    router.navigate("/stable?q=hello");
+    await waitForIdle(router);
+    expect(loader).toHaveBeenCalledTimes(1);
+
+    router.navigate("/stable?q=hello");
+    await waitForIdle(router);
+    expect(loader).toHaveBeenCalledTimes(1);
+  });
+
+  it("navigate() merges search params by default", async () => {
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/dash", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    // First navigation: set color=blue via options.search
+    router.navigate("/dash", { search: { color: "blue" } });
+    await waitForIdle(router);
+
+    // Second navigation: set size=10 - color should persist (merge mode)
+    router.navigate("/dash", { search: { size: "10" } });
+    await waitForIdle(router);
+
+    const state = router.getState();
+    const match = state.matches.find((m) => m.routeId === "/dash");
+    expect(match!.rawSearch).toEqual({ color: "blue", size: "10" });
+  });
+
+  it("searchMode: 'replace' replaces all search params", async () => {
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/dash", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    // First navigation: set color=blue
+    router.navigate("/dash", { search: { color: "blue" } });
+    await waitForIdle(router);
+
+    // Second navigation with replace mode: only size=10 - color should be gone
+    router.navigate("/dash", { search: { size: "10" }, searchMode: "replace" });
+    await waitForIdle(router);
+
+    const state = router.getState();
+    const match = state.matches.find((m) => m.routeId === "/dash");
+    expect(match!.rawSearch).toEqual({ size: "10" });
+  });
+
+  it("navigate() with function search receives current params", async () => {
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/counter", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    // Set page=1
+    router.navigate("/counter", { search: { page: "1" } });
+    await waitForIdle(router);
+
+    // Use function form to increment page
+    router.navigate("/counter", {
+      search: (prev: Record<string, string>) => ({
+        ...prev,
+        page: String(Number(prev.page) + 1),
+      }),
+    });
+    await waitForIdle(router);
+
+    const state = router.getState();
+    const match = state.matches.find((m) => m.routeId === "/counter");
+    expect(match!.rawSearch).toEqual({ page: "2" });
+  });
+
+  it("deletes a param when set to undefined", async () => {
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/items", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    // Set page and filter
+    router.navigate("/items", { search: { page: "1", filter: "shoes" } });
+    await waitForIdle(router);
+    expect(router.getState().matches.find((m) => m.routeId === "/items")!.rawSearch).toEqual({
+      page: "1",
+      filter: "shoes",
+    });
+
+    // Remove filter via undefined
+    router.navigate("/items", {
+      search: (prev: Record<string, string>) => ({ ...prev, filter: undefined }),
+    });
+    await waitForIdle(router);
+
+    const match = router.getState().matches.find((m) => m.routeId === "/items");
+    expect(match!.rawSearch).toEqual({ page: "1" });
+    expect(match!.rawSearch!.filter).toBeUndefined();
+  });
+
+  it("sets multiple params at once", async () => {
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/search", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    router.navigate("/search", {
+      search: { page: "2", sort: "date", filter: "active" },
+    });
+    await waitForIdle(router);
+
+    const match = router.getState().matches.find((m) => m.routeId === "/search");
+    expect(match!.rawSearch).toEqual({ page: "2", sort: "date", filter: "active" });
+  });
+
+  it("string URL to + search option merges onto URL's own params", async () => {
+    const loader = vi.fn().mockResolvedValue(null);
+    const routesWithLoader: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: () => null,
+        children: [{ path: "/mixed", component: () => null, loader }],
+      },
+    ];
+
+    const router = new Router(routesWithLoader);
+    await waitForIdle(router);
+
+    // to has ?page=1 embedded, search option adds sort=date
+    router.navigate("/mixed?page=1", { search: { sort: "date" } });
+    await waitForIdle(router);
+
+    const match = router.getState().matches.find((m) => m.routeId === "/mixed");
+    expect(match!.rawSearch).toEqual({ page: "1", sort: "date" });
   });
 });
