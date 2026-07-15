@@ -283,6 +283,46 @@ export default function AboutPage() {
               June 16
             </span>
           </a>
+          <a
+            href="https://tty.atharvdangedev.in/blog/per-route-error-boundaries-and-prefetch-on-hover"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={blogCardStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border-subtle)";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  marginBottom: "2px",
+                }}
+              >
+                Per-Route Error Boundaries and Prefetch on Hover
+              </div>
+              <div style={{ fontSize: "13px", color: "var(--ink-muted)" }}>
+                Error isolation, prefetch cache, search params - Slices 5-6
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: "12px",
+                fontFamily: "'Geist Mono', monospace",
+                color: "var(--ink-faint)",
+                whiteSpace: "nowrap",
+                marginLeft: "1rem",
+              }}
+            >
+              June 20
+            </span>
+          </a>
         </div>
       </section>
 
@@ -338,6 +378,7 @@ export default function AboutPage() {
           <li>Vite + React 19 for the demo app</li>
           <li>Pure TypeScript for the router - zero runtime dependencies</li>
           <li>Vitest + @testing-library/react for tests</li>
+          <li>Blume for the docs site</li>
         </ul>
       </section>
     </div>
