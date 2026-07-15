@@ -11,17 +11,25 @@ import AboutPage from "./routes/about";
 import AnalyticsPage from "./routes/dashboard/analytics";
 import AuthLayout from "./routes/_auth";
 import BillingPage from "./routes/settings/billing";
+import BillingErrorPage, {
+  errorComponent as billingErrorError,
+  loader as billingErrorLoader,
+} from "./routes/settings/billing-error";
 import DashboardHome from "./routes/dashboard/index";
 import DashboardLayout from "./routes/dashboard";
 import FilePage from "./routes/files/$wildcard";
 import IndexPage from "./routes/index";
 import NavigatePage from "./routes/navigate";
 import ParamsShowcasePage from "./routes/showcase/$id";
-import ProfilePage from "./routes/settings/profile";
+import ProfilePage, { loader as profileLoader } from "./routes/settings/profile";
 import RootLayout from "./routes/__root";
-import SettingsLayout from "./routes/settings";
+import SettingsLayout, { loader as settingsLoader } from "./routes/settings";
 import PrefetchExplainerPage from "./routes/prefetch";
 import PrefetchDemoTarget, { loader as prefetchDemoLoader } from "./routes/prefetch-demo";
+import PrefetchFailPage, {
+  errorComponent as prefetchFailError,
+  loader as prefetchFailLoader,
+} from "./routes/prefetch-fail";
 import UsersPage, {
   loader as usersLoader,
   validateSearch as usersValidateSearch,
@@ -55,9 +63,16 @@ const router = new Router([
       {
         path: "/settings",
         component: SettingsLayout,
+        loader: settingsLoader,
         children: [
-          { path: "/settings/profile", component: ProfilePage },
+          { path: "/settings/profile", component: ProfilePage, loader: profileLoader },
           { path: "/settings/billing", component: BillingPage },
+          {
+            path: "/settings/billing-error",
+            component: BillingErrorPage,
+            loader: billingErrorLoader,
+            errorComponent: billingErrorError,
+          },
         ],
       },
       {
@@ -76,6 +91,12 @@ const router = new Router([
         path: "/prefetch-demo",
         component: PrefetchDemoTarget,
         loader: prefetchDemoLoader,
+      },
+      {
+        path: "/prefetch-fail",
+        component: PrefetchFailPage,
+        loader: prefetchFailLoader,
+        errorComponent: prefetchFailError,
       },
       {
         path: "/users",

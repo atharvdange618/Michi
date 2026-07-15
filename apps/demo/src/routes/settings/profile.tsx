@@ -1,4 +1,10 @@
+import { useLoaderData, useSearch, type LoaderContext } from "michi";
 import { useSEO } from "../../components/use-seo";
+import { fetchProfile } from "../../mocks/api";
+
+export async function loader(_: LoaderContext) {
+  return fetchProfile();
+}
 
 const calloutStyle: React.CSSProperties = {
   background: "var(--blue-soft)",
@@ -18,7 +24,19 @@ const codeStyle: React.CSSProperties = {
   borderRadius: "4px",
 };
 
+const dataBlockStyle: React.CSSProperties = {
+  fontFamily: "'Geist Mono', monospace",
+  fontSize: "13px",
+  padding: "0.75rem 1rem",
+  background: "var(--bg-inset)",
+  borderRadius: "var(--radius)",
+  lineHeight: 1.8,
+  border: "1px solid var(--border-subtle)",
+  marginBottom: "1.25rem",
+};
+
 export default function ProfilePage() {
+  const data = useLoaderData<Awaited<ReturnType<typeof fetchProfile>>>();
   useSEO({
     title: "Profile",
     description:
@@ -32,37 +50,36 @@ export default function ProfilePage() {
           fontSize: "22px",
           fontWeight: 700,
           letterSpacing: "-0.02em",
-          margin: "0 0 1.25rem",
+          margin: "0 0 1rem",
         }}
       >
         Profile
       </h2>
+
+      <div style={dataBlockStyle}>
+        <div>
+          <span style={{ color: "var(--ink-faint)" }}>profile loader call #:</span>{" "}
+          {data.callCount}
+        </div>
+        <div>
+          <span style={{ color: "var(--ink-faint)" }}>resolved at:</span> {data.resolvedAt}
+        </div>
+        <div>
+          <span style={{ color: "var(--ink-faint)" }}>name:</span> {data.name}
+        </div>
+      </div>
+
       <div style={calloutStyle}>
-        <strong>What's happening here:</strong>
+        <strong>Parallel loaders + caching:</strong>
         <br />
-        The URL is <code style={codeStyle}>/settings/profile</code>. Michi matched the route tree
-        and built a flat matches array:
-        <br />
-        <br />
-        <code style={codeStyle}>matches[0]</code> = <code style={codeStyle}>__root</code> (the
-        outermost shell - nav bar)
-        <br />
-        <code style={codeStyle}>matches[1]</code> = <code style={codeStyle}>settings</code> (layout
-        - sidebar + Outlet)
-        <br />
-        <code style={codeStyle}>matches[2]</code> = <code style={codeStyle}>settings/profile</code>{" "}
-        (this page, the leaf)
+        Both <code style={codeStyle}>settings.tsx</code> (layout) and{" "}
+        <code style={codeStyle}>profile.tsx</code> (this page) have loaders. When you navigated
+        here, Michi ran both in parallel.
         <br />
         <br />
-        <strong>Outlet depth:</strong> <code style={codeStyle}>RouterProvider</code> renders{" "}
-        <code style={codeStyle}>matches[0]</code> and passes depth <code style={codeStyle}>1</code>{" "}
-        via context. Each <code style={codeStyle}>&lt;Outlet /&gt;</code> reads its depth, renders{" "}
-        <code style={codeStyle}>matches[depth]</code>, and increments.
-        <br />
-        <br />
-        <strong>Layout persistence:</strong> Navigate to Billing -{" "}
-        <code style={codeStyle}>settings.tsx</code> stays mounted. Only{" "}
-        <code style={codeStyle}>matches[2]</code> changes from profile to billing.
+        <strong>Try it:</strong> Click "Billing" in the sidebar, then come back to "Profile". The
+        settings layout loader call count stays the same (cached). Only the profile loader
+        re-runs.
       </div>
     </div>
   );

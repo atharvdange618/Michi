@@ -1,4 +1,6 @@
 let prefetchDemoCallCount = 0;
+let settingsLayoutCallCount = 0;
+let profileCallCount = 0;
 
 export type User = {
   id: string;
@@ -68,5 +70,33 @@ export async function fetchUsersPage(
     users: sorted.slice(start, start + pageSize),
     page,
     totalPages: Math.ceil(sorted.length / pageSize),
+  };
+}
+
+export async function fetchSettingsLayout(): Promise<{
+  callCount: number;
+  resolvedAt: string;
+}> {
+  settingsLayoutCallCount += 1;
+  await new Promise((r) => setTimeout(r, 300));
+  return {
+    callCount: settingsLayoutCallCount,
+    resolvedAt: new Date().toLocaleTimeString(),
+  };
+}
+
+export async function fetchProfile(): Promise<{
+  name: string;
+  email: string;
+  callCount: number;
+  resolvedAt: string;
+}> {
+  profileCallCount += 1;
+  await new Promise((r) => setTimeout(r, 200));
+  return {
+    name: "Atharv Dange",
+    email: "atharv@michi.dev",
+    callCount: profileCallCount,
+    resolvedAt: new Date().toLocaleTimeString(),
   };
 }

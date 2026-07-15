@@ -1,6 +1,11 @@
-import { Link, Outlet } from "michi";
+import { Link, Outlet, type LoaderContext } from "michi";
 import type { CSSProperties } from "react";
 import { useSEO } from "../components/use-seo";
+import { fetchSettingsLayout } from "../mocks/api";
+
+export async function loader(_: LoaderContext) {
+  return fetchSettingsLayout();
+}
 
 const links = [
   { to: "/settings/profile", label: "Profile" },
