@@ -4,6 +4,7 @@ function hasChanged(prev: RouteMatch | undefined, next: RouteMatch): boolean {
   if (!prev) return true;
   if (prev.routeId !== next.routeId) return true;
   if (JSON.stringify(prev.params) !== JSON.stringify(next.params)) return true;
+  if (JSON.stringify(prev.rawSearch) !== JSON.stringify(next.rawSearch)) return true;
   return false;
 }
 
@@ -15,8 +16,13 @@ export async function runLoaders(
     pendingMatches.map(async (match, index) => {
       const prev = previousMatches[index];
 
-      if (!hasChanged(prev, match) && !prev!.error) {
-        return { ...match, loaderData: prev!.loaderData, error: undefined };
+      if (!hasChanged(prev, match) && !prev!.error && !match.error) {
+        return prev!;
+      }
+
+      // validateSearch already failed - don't run the loader with invalid params
+      if (match.error) {
+        return { ...match, loaderData: undefined };
       }
 
       if (!match.loader) return { ...match, error: undefined };
@@ -24,7 +30,7 @@ export async function runLoaders(
       try {
         const ctx: LoaderContext = {
           params: match.params,
-          search: {}, // TODO: Slice 7 - parse from location.search using validateSearch
+          search: (match.search ?? {}) as Record<string, string>,
         };
 
         const loaderData = await match.loader(ctx);
