@@ -37,42 +37,20 @@ const navSections: Array<{
     ],
   },
   {
-    label: "Params",
+    label: "Features",
     links: [
-      { to: "/user/atharv", label: "Atharv", prefetch: "intent" },
-      { to: "/user/maithili", label: "Maithili", prefetch: "intent" },
-      { to: "/showcase/michi", label: "useParams" },
+      { to: "/user/atharv", label: "Params", prefetch: "intent" },
+      { to: "/settings/profile", label: "Layouts" },
+      { to: "/prefetch", label: "Prefetch", prefetch: "intent" },
+      { to: "/users?page=1", label: "Search" },
     ],
   },
   {
-    label: "Layouts",
+    label: "Errors",
     links: [
-      { to: "/dashboard", label: "Dashboard" },
-      { to: "/dashboard/analytics", label: "Analytics" },
-      { to: "/settings/profile", label: "Profile" },
-      { to: "/settings/billing", label: "Billing" },
-    ],
-  },
-  {
-    label: "Edge cases",
-    links: [
-      { to: "/files/public/uploads/report.pdf", label: "Files" },
-      { to: "/errors/loader-fail", label: "Loader Fail" },
-      { to: "/errors/render-fail", label: "Render Fail" },
-    ],
-  },
-  {
-    label: "Prefetch",
-    links: [
-      { to: "/prefetch", label: "Demo", prefetch: "intent" },
-      { to: "/prefetch-demo?via=hover", label: "Target", prefetch: "intent" },
-    ],
-  },
-  {
-    label: "Search Params",
-    links: [
-      { to: "/users?page=1", label: "Users" },
-      { to: "/users?page=abc", label: "Users (bad page)" },
+      { to: "/errors/loader-fail", label: "Loader" },
+      { to: "/errors/render-fail", label: "Render" },
+      { to: "/settings/billing-error", label: "Isolation" },
     ],
   },
   {
