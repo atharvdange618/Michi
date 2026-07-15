@@ -15,6 +15,7 @@ export type RouteDefinition = {
   path: string;
   component: ComponentType;
   loader?: (ctx: LoaderContext<any, any>) => Promise<unknown>;
+  validateSearch?: (raw: Record<string, string>) => unknown;
   errorComponent?: ComponentType<{ error: unknown }>;
   children?: RouteDefinition[];
 };
@@ -22,6 +23,8 @@ export type RouteDefinition = {
 export type RouteMatch = {
   routeId: string;
   params: Record<string, string>;
+  rawSearch?: Record<string, string>;
+  search?: unknown;
   loaderData: unknown;
   errorComponent?: ComponentType<{ error: unknown }>;
   error?: unknown;
@@ -37,4 +40,9 @@ export type RouterState = {
 
 export type RouterOptions = {
   prefetchTtlMs?: number;
+};
+
+export type NavigateOptions = {
+  search?: Record<string, unknown> | ((prev: Record<string, string>) => Record<string, unknown>);
+  searchMode?: "merge" | "replace"; // default: "merge"
 };
