@@ -48,6 +48,18 @@ const secondaryBtnStyle: CSSProperties = {
   transition: "border-color 150ms ease, opacity 150ms ease",
 };
 
+const warnBtnStyle: CSSProperties = {
+  display: "inline-block",
+  padding: "0.5rem 1rem",
+  background: "var(--red-soft)",
+  color: "var(--red)",
+  border: "1px solid var(--red-border)",
+  borderRadius: "var(--radius-sm)",
+  textDecoration: "none",
+  fontSize: "14px",
+  transition: "border-color 150ms ease, opacity 150ms ease",
+};
+
 const codeBlockStyle: CSSProperties = {
   fontFamily: "'Geist Mono', monospace",
   fontSize: "13px",
@@ -160,6 +172,70 @@ export default function PrefetchExplainerPage() {
             Click directly (no hover prefetch) &rarr;
           </Link>
         </div>
+
+        <div
+          style={cardStyle}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--accent)";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-subtle)";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+        >
+          <div style={labelStyle}>Custom prefetchDelay</div>
+          <p style={descStyle}>
+            Default delay is 50ms. This link uses <code>prefetchDelay={"{"}500{"}"}</code> - hover
+            and hold for half a second before the prefetch fires. Useful for avoiding prefetch on
+            accidental micro-hovers.
+          </p>
+          <Link
+            to="/prefetch-demo?via=slow-hover"
+            prefetch="intent"
+            prefetchDelay={500}
+            style={primaryBtnStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "0.85";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "1";
+            }}
+          >
+            Hover for 500ms, then click &rarr;
+          </Link>
+        </div>
+
+        <div
+          style={cardStyle}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--red-border)";
+            e.currentTarget.style.transform = "translateY(-1px)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-subtle)";
+            e.currentTarget.style.transform = "translateY(0)";
+          }}
+        >
+          <div style={{ ...labelStyle, color: "var(--red)" }}>Failed prefetch</div>
+          <p style={descStyle}>
+            This link's loader always throws. The prefetch fails silently (error logged to console).
+            On click, the route's loader re-runs and the error boundary catches it.
+          </p>
+          <Link
+            to="/prefetch-fail"
+            prefetch="intent"
+            style={warnBtnStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = "0.85";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = "1";
+            }}
+          >
+            Hover to prefetch (will fail), then click &rarr;
+          </Link>
+        </div>
       </div>
 
       <div
@@ -189,11 +265,17 @@ export default function PrefetchExplainerPage() {
   Hover to prefetch
 </Link>
 
+// Custom delay (default is 50ms)
+<Link to="/page" prefetch="intent" prefetchDelay={500}>
+  Slower prefetch trigger
+</Link>
+
 // What happens under the hood:
-// 1. onMouseEnter fires after 50ms delay
+// 1. onMouseEnter fires after delay
 // 2. Router.prefetch() matches the route
 // 3. Route loader runs, result cached (30s TTL)
-// 4. On click, cached data used instantly`}
+// 4. On click, cached data used instantly
+// 5. If loader fails, error logged, click re-runs`}
         </pre>
       </div>
 
@@ -204,11 +286,15 @@ export default function PrefetchExplainerPage() {
         </div>
         <div>
           <span style={{ color: "var(--ink-faint)" }}>delay: </span>
-          50ms (configurable via prefetchDelay)
+          50ms default (configurable via prefetchDelay)
         </div>
         <div>
           <span style={{ color: "var(--ink-faint)" }}>cache: </span>
           TTL-based, deduped, consumed on navigation
+        </div>
+        <div>
+          <span style={{ color: "var(--ink-faint)" }}>failure: </span>
+          logged to console, click re-runs loader
         </div>
         <div>
           <span style={{ color: "var(--ink-faint)" }}>clear: </span>
