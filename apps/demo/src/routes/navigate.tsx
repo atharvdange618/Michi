@@ -60,6 +60,57 @@ export default function NavigatePage() {
         This page uses <code>useRouter()</code> to navigate via button clicks - no{" "}
         <code>&lt;Link&gt;</code> needed.
       </p>
+      <div style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
+        <button
+          type="button"
+          onClick={() => window.history.back()}
+          style={{
+            ...navBtnStyle,
+            justifyContent: "center",
+            gap: "0.5rem",
+            flex: 1,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--accent)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-subtle)";
+          }}
+        >
+          &larr; Go Back
+        </button>
+        <button
+          type="button"
+          onClick={() => window.history.forward()}
+          style={{
+            ...navBtnStyle,
+            justifyContent: "center",
+            gap: "0.5rem",
+            flex: 1,
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = "var(--accent)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = "var(--border-subtle)";
+          }}
+        >
+          Go Forward &rarr;
+        </button>
+      </div>
+      <p
+        style={{
+          fontSize: "13px",
+          color: "var(--ink-faint)",
+          margin: "0 0 1.5rem",
+          fontFamily: "'Geist Mono', monospace",
+        }}
+      >
+        These call{" "}
+        <code>window.history.back()</code> / <code>window.history.forward()</code> directly, which
+        fires the <code>popstate</code> event - the same mechanism the browser's back/forward buttons
+        use.
+      </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         {routes.map((r) => (
           <button
