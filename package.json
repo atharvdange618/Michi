@@ -4,8 +4,8 @@
   "type": "module",
   "description": "A from-first-principles client-side router, built to learn how routers actually work under the hood.",
   "scripts": {
-    "dev": "astro dev",
-    "build": "astro build",
+    "dev": "turbo dev",
+    "build": "turbo build",
     "test": "turbo test",
     "codegen": "turbo codegen",
     "doctor": "npx react-doctor@latest",
