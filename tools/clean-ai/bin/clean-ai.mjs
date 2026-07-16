@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 
 // Removes low-value AI-generated comments from the codebase.
-// Also replaces em dashes with hyphens (common AI writing pattern).
+// Also replaces em dashes and curly quotes (common AI writing patterns).
 //
 // Patterns targeted:
 //   JSX:  {/* Description */}
 //   JS:   /* Description */
 //   HTML: <!-- Description -->
 //   Em dash: word — word → word - word
+//   Double hyphen: word -- word → word - word
+//   Curly quotes: "word" / "word" → "word"
 //
 // Skips:
 //   - Comments that contain TODO, FIXME, HACK, NOTE, WARN
@@ -33,7 +35,7 @@ const USEFUL = /\b(TODO|FIXME|HACK|NOTE|WARN|eslint-disable|oxlint-ignore|pretti
 // Collect all target files (skip node_modules, dist, .git)
 const SKIP_PATTERNS = [/[/\\]node_modules[/\\]/, /[/\\]dist[/\\]/, /[/\\]\.git[/\\]/];
 const files = [];
-for await (const f of glob(ROOT + "/**/*.{ts,tsx,js,jsx,astro,vue,svelte}")) {
+for await (const f of glob(ROOT + "/**/*.{ts,tsx,js,jsx,astro,vue,svelte,md}")) {
   if (SKIP_PATTERNS.some((p) => p.test(f))) continue;
   files.push(f);
 }
@@ -75,7 +77,18 @@ for (const file of files) {
   content = content.replace(/ — /g, () => { dashCount++; return " - "; });
   totalRemoved += dashCount;
 
-  // 5. Clean up resulting double-blank lines
+  // 5. Replace double hyphens used as em dashes
+  let doubleDashCount = 0;
+  content = content.replace(/ -- /g, () => { doubleDashCount++; return " - "; });
+  totalRemoved += doubleDashCount;
+
+  // 6. Replace curly quotes with straight quotes
+  let quoteCount = 0;
+  content = content.replace(/[\u201C\u201D]/g, () => { quoteCount++; return '"'; });
+  content = content.replace(/[\u2018\u2019]/g, () => { quoteCount++; return "'"; });
+  totalRemoved += quoteCount;
+
+  // 7. Clean up resulting double-blank lines
   content = content.replace(/\n{3,}/g, "\n\n");
 
   if (content !== original) {
