@@ -2,7 +2,9 @@
 
 I've used React Router and TanStack Router in production for years. They work great. But I never really understood _how_ they work. So I started building one from scratch to find out.
 
-Michi is a client-side router built from first principles - no routing libraries, no framework abstractions, just the raw History API and React primitives. It's not trying to replace anything. It's here to answer the question: what actually happens between the click and the render?
+Michi is an educational router built from first principles to explore the architecture behind modern routing systems. Each feature is implemented as a self-contained slice that answers one fundamental question about how client-side routing works - from the History API to nested layouts, data loading, and beyond.
+
+It's not trying to replace anything. It's here to answer the question: what actually happens between the click and the render?
 
 The name 道 (michi) is Japanese for "path" or "the way." Seemed fitting.
 
@@ -21,8 +23,14 @@ Every feature is built as a **slice** - a self-contained, demonstrable milestone
 | 5     | Done    | **Error Boundaries** - isolating failures per route instead of blank screens                  |
 | 6     | Done    | **Prefetch on Hover** - running loaders early so navigation feels instant                     |
 | 7     | Done    | **Search Params** - typed, serializable state that lives in the URL                           |
-| 8     | Planned | **File-Based Routing** - a codegen script that reads your filesystem                          |
+| 8     | Planned | **File-Based Routing** - codegen from filesystem, AST traversal, module resolution            |
 | 9     | Planned | **Typed Routes** - compile-time safety for paths, params, and loader data                     |
+| 10    | Planned | **Route Ranking** - why `/users/new` beats `/users/:id`, specificity resolution               |
+| 11    | Planned | **Navigation Lifecycle** - `beforeLeave`, `loader`, commit, `afterNavigate` hooks             |
+| 12    | Planned | **Structural Sharing** - granular subscriptions, skip unnecessary re-renders                  |
+| 13    | Planned | **View Transitions API** - native browser transitions between routes                          |
+| 14    | Planned | **Scroll Restoration** - restoring scroll position across navigation and history              |
+| 15    | Planned | **Abortable Navigation** - `AbortController` for every navigation, deep cancellation          |
 
 ## The stack
 
