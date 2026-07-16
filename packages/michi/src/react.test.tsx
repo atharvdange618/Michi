@@ -69,7 +69,7 @@ afterEach(() => {
 });
 
 function TestRouter({ routes }: { routes: import("./types").RouteDefinition[] }) {
-  const router = useMemo(() => new Router(routes), []);
+  const router = useMemo(() => new Router(routes), [routes]);
   return <RouterProvider router={router} />;
 }
 

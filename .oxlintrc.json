@@ -38,7 +38,9 @@
     "unicorn/no-array-sort": "off",
     "unicorn/no-nested-ternary": "off",
     "unicorn/catch-error-name": "off",
-    "unicorn/prefer-string-raw": "off"
+    "unicorn/prefer-string-raw": "off",
+    "unicorn/consistent-function-scoping": "off",
+    "eslint/no-shadow": "off"
   },
   "ignorePatterns": ["node_modules", "dist"]
 }

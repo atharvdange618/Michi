@@ -1,4 +1,4 @@
-import { useLoaderData, useSearch, type LoaderContext } from "michi";
+import { useLoaderData, type LoaderContext } from "michi";
 import { useSEO } from "../../components/use-seo";
 import { fetchProfile } from "../../mocks/api";
 
