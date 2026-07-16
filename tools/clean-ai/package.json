@@ -1,0 +1,12 @@
+{
+  "name": "clean-ai",
+  "version": "1.0.0",
+  "description": "Remove AI-generated comments and em dashes from your codebase",
+  "type": "module",
+  "bin": {
+    "clean-ai": "./bin/clean-ai.mjs"
+  },
+  "files": [
+    "bin/"
+  ]
+}
