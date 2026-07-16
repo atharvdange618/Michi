@@ -821,7 +821,7 @@ describe("Search params", () => {
     router.navigate("/counter", {
       search: (prev: Record<string, string>) => ({
         ...prev,
-        page: String(Number(prev.page) + 1),
+        page: String(Number(prev["page"]) + 1),
       }),
     });
     await waitForIdle(router);
@@ -860,7 +860,7 @@ describe("Search params", () => {
 
     const match = router.getState().matches.find((m) => m.routeId === "/items");
     expect(match!.rawSearch).toEqual({ page: "1" });
-    expect(match!.rawSearch!.filter).toBeUndefined();
+    expect(match!.rawSearch!["filter"]).toBeUndefined();
   });
 
   it("sets multiple params at once", async () => {

@@ -26,9 +26,9 @@ export type RouteMatch = {
   rawSearch?: Record<string, string>;
   search?: unknown;
   loaderData: unknown;
-  errorComponent?: ComponentType<{ error: unknown }>;
+  errorComponent: ComponentType<{ error: unknown }> | undefined;
   error?: unknown;
-  loader?: (ctx: LoaderContext) => Promise<unknown>;
+  loader: ((ctx: LoaderContext) => Promise<unknown>) | undefined;
   component: ComponentType;
 };
 

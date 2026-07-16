@@ -97,7 +97,7 @@ function matchKey(match: RouteMatch): string {
 
 type RouteErrorBoundaryProps = {
   error?: unknown;
-  errorComponent?: ComponentType<{ error: unknown }>;
+  errorComponent: ComponentType<{ error: unknown }> | undefined;
   children: ReactNode;
 };
 
@@ -106,17 +106,17 @@ type RouteErrorBoundaryState = {
 };
 
 class RouteErrorBoundary extends Component<RouteErrorBoundaryProps, RouteErrorBoundaryState> {
-  state: RouteErrorBoundaryState = { renderError: undefined };
+  override state: RouteErrorBoundaryState = { renderError: undefined };
 
   static getDerivedStateFromError(error: unknown): RouteErrorBoundaryState {
     return { renderError: error };
   }
 
-  componentDidCatch(error: unknown, errorInfo: ErrorInfo): void {
+  override componentDidCatch(error: unknown, errorInfo: ErrorInfo): void {
     console.error("Michi caught a render error in a route:", error, errorInfo);
   }
 
-  render(): ReactNode {
+  override render(): ReactNode {
     // loader error takes precedence here
     const error = this.props.error ?? this.state.renderError;
 

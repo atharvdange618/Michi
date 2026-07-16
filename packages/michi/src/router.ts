@@ -154,6 +154,8 @@ export class Router {
             routeId: "__root",
             params: {},
             loaderData: undefined,
+            errorComponent: undefined,
+            loader: undefined,
             component: () => null,
             error,
           },
