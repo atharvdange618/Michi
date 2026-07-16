@@ -156,8 +156,6 @@ export default function UsersPage() {
         The URL is the source of truth. <code>?page=2&sort=date</code> is typed, validated state
         that survives refresh, works with back/forward, and can be shared via a link.
       </p>
-
-      {/* Live URL display */}
       <div
         style={{
           fontFamily: "'Geist Mono', monospace",
@@ -177,8 +175,6 @@ export default function UsersPage() {
         <span style={{ color: "var(--ink)" }}>/users</span>
         <span style={{ color: "var(--accent)" }}>?{searchString}</span>
       </div>
-
-      {/* Error state for invalid params */}
       {isInvalid && (
         <div style={errorContainerStyle}>
           <div
@@ -211,11 +207,8 @@ export default function UsersPage() {
           </button>
         </div>
       )}
-
-      {/* User list + pagination + sort + filter */}
       {!isInvalid && (
         <>
-          {/* Sort toggle + filter */}
           <div
             style={{
               display: "flex",
@@ -415,8 +408,6 @@ export default function UsersPage() {
           </div>
         </>
       )}
-
-      {/* How it works */}
       <div
         style={{
           marginTop: "2.5rem",

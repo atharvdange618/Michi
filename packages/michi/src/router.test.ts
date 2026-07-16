@@ -397,14 +397,14 @@ describe("Loaders", () => {
     await waitForIdle(router);
     const firstRootMatch = router.getState().matches[0];
 
-    // Navigate to different child — root match should keep identity
+    // Navigate to different child - root match should keep identity
     router.navigate("/user/john");
     await waitForIdle(router);
     const secondRootMatch = router.getState().matches[0];
 
     expect(secondRootMatch).toBe(firstRootMatch);
 
-    // Same URL, same params — match identity preserved
+    // Same URL, same params - match identity preserved
     router.navigate("/user/john");
     await waitForIdle(router);
     const thirdRootMatch = router.getState().matches[0];
@@ -412,7 +412,7 @@ describe("Loaders", () => {
 
     expect(thirdRootMatch).toBe(firstRootMatch);
 
-    // Capture child match, navigate away and back — different object
+    // Capture child match, navigate away and back - different object
     // (prev for child is now the /user/john match, not the original)
     router.navigate("/user/atharv");
     await waitForIdle(router);
