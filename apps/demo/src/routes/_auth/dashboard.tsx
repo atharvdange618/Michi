@@ -1,6 +1,6 @@
 import { Link, Outlet } from "michi";
 import type { CSSProperties } from "react";
-import { useSEO } from "../components/use-seo";
+import { useSEO } from "../../components/use-seo";
 
 const links = [
   { to: "/dashboard", label: "Overview" },

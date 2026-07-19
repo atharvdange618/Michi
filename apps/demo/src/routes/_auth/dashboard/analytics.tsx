@@ -1,4 +1,4 @@
-import { useSEO } from "../../components/use-seo";
+import { useSEO } from "../../../components/use-seo";
 
 const calloutStyle: React.CSSProperties = {
   background: "var(--green-soft)",
