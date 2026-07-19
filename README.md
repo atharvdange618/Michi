@@ -14,6 +14,8 @@ The name 道 (michi) is Japanese for "path" or "the way." Seemed fitting for a p
 
 **[Documentation](https://michi-docs.vercel.app)** | **[Demo](https://michi.atharvdangedev.in)** | **[Blog](https://michi-docs.vercel.app/blog)**
 
+**[GitHub](https://github.com/atharvdange618)** | **[X/Twitter](https://x.com/atharvdangedev)** | **[Website](https://atharvdangedev.in)**
+
 ## The journey
 
 Every feature is built as a self-contained **slice**. Each slice introduces a real architectural problem and gradually builds the solution.
