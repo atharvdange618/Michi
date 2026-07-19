@@ -17,7 +17,7 @@ import BillingErrorPage, {
 } from "./routes/settings/billing-error";
 import DashboardHome from "./routes/dashboard/index";
 import DashboardLayout from "./routes/dashboard";
-import FilePage from "./routes/files/$wildcard";
+import FilePage from "./routes/files/$";
 import IndexPage from "./routes/index";
 import NavigatePage from "./routes/navigate";
 import ParamsShowcasePage from "./routes/showcase/$id";
