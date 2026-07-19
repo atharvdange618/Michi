@@ -16,8 +16,8 @@ const containerStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   fontFamily: "system-ui, -apple-system, sans-serif",
-  color: "#1a1a1a",
-  background: "#faf8f5",
+  color: "#ededed",
+  background: "#0c0c0c",
   userSelect: "none",
 };
 
@@ -37,10 +37,10 @@ const buttonStyle: React.CSSProperties = {
   padding: "12px 24px",
   fontSize: "14px",
   fontWeight: 600,
-  border: "1px solid #e8e4df",
+  border: "1px solid #333",
   borderRadius: "8px",
-  background: "#f3f0eb",
-  color: "#1a1a1a",
+  background: "#161616",
+  color: "#ededed",
   cursor: "pointer",
   transition: "background 0.15s, border-color 0.15s",
 };
@@ -108,12 +108,12 @@ export function NotFound() {
         onClick={() => router.navigate("/")}
         style={buttonStyle}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = "#ebe7e0";
-          e.currentTarget.style.borderColor = "#d5d0c8";
+          e.currentTarget.style.background = "#1a1a1a";
+          e.currentTarget.style.borderColor = "#444";
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.background = "#f3f0eb";
-          e.currentTarget.style.borderColor = "#e8e4df";
+          e.currentTarget.style.background = "#161616";
+          e.currentTarget.style.borderColor = "#333";
         }}
       >
         go home
