@@ -1,73 +1,41 @@
-# React + TypeScript + Vite
+# Michi Demo App
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A Vite + React 19 application that demonstrates every feature of the Michi router.
 
-Currently, two official plugins are available:
+## Running
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+pnpm dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## What it shows
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Dynamic routing** `/user/$id` extracts params from the URL
+- **Nested layouts** `/settings` wraps children in a persistent sidebar
+- **Pathless layouts** `_auth` wraps `/dashboard` without adding a URL segment
+- **Data loaders** fetch data before rendering, with parallel execution and caching
+- **Error boundaries** per-route error isolation with custom error components
+- **Prefetch on hover** run loaders early when the user hovers a link
+- **Search params** typed, validated URL state with `useSearch()`
+- **Programmatic navigation** `useRouter()` for navigating from event handlers
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Routes
+
+```
+/                         Home page
+/about                    About page
+/navigate                 Programmatic navigation + back/forward buttons
+/user/$id                 Dynamic params (/user/atharv, /user/maithili)
+/files/*                  Wildcard catch-all (/files/public/uploads/report.pdf)
+/dashboard                Pathless layout (_auth) + nested layout with sidebar
+/dashboard/analytics      Nested outlet (3 levels deep)
+/settings/profile         Nested layout with parallel loaders + caching
+/settings/billing         Same layout, different child
+/settings/billing-error   Error isolation: child errors, parent layout stays
+/errors/loader-fail       Loader error with custom error component
+/errors/render-fail       Render error with custom error component
+/prefetch                 Prefetch on hover with intent detection
+/prefetch-fail            Failed prefetch handling
+/users?page=1             Search params: pagination, sort, filter
+/users?page=abc           Search params: validation error demo
 ```
