@@ -6,6 +6,8 @@
 // Patterns targeted:
 //   JSX:  {/* Description */}
 //   JS:   /* Description */
+//   CSS:  /* ── Section ────────────── */ (decorative dividers)
+//   JS:   // ── Section ────────────── (line comment dividers)
 //   HTML: <!-- Description -->
 //   Em dash: word — word → word - word
 //   Double hyphen: word -- word → word - word
@@ -35,7 +37,7 @@ const USEFUL = /\b(TODO|FIXME|HACK|NOTE|WARN|eslint-disable|oxlint-ignore|pretti
 // Collect all target files (skip node_modules, dist, .git)
 const SKIP_PATTERNS = [/[/\\]node_modules[/\\]/, /[/\\]dist[/\\]/, /[/\\]\.git[/\\]/];
 const files = [];
-for await (const f of glob(ROOT + "/**/*.{ts,tsx,js,jsx,astro,vue,svelte,md}")) {
+for await (const f of glob(ROOT + "/**/*.{ts,tsx,js,jsx,astro,vue,svelte,md,css}")) {
   if (SKIP_PATTERNS.some((p) => p.test(f))) continue;
   files.push(f);
 }
@@ -58,37 +60,49 @@ for (const file of files) {
     return "";
   });
 
-  // 2. Remove JS/CSS comments: /* ... */
+  // 2. Remove decorative section dividers: /* ── Name ──────── */
+  content = content.replace(/^\s*\/\*\s*(?:─|=|-){2,}\s+.+?\s*(?:─|=|-){2,}\s*\*\/\s*$/gm, (match) => {
+    totalRemoved++;
+    return "";
+  });
+
+  // 2b. Remove JS decorative section dividers: // ── Name ────────
+  content = content.replace(/^\s*\/\/\s*(?:─|=|-){2,}\s+.+?\s*(?:─|=|-)*\s*$/gm, (match) => {
+    totalRemoved++;
+    return "";
+  });
+
+  // 3. Remove JS/CSS comments: /* ... */
   content = content.replace(/^\s*\/\*\s*(.+?)\s*\*\/\s*$/gm, (match, text) => {
     if (USEFUL.test(text)) return match;
     totalRemoved++;
     return "";
   });
 
-  // 3. Remove HTML comments: <!-- ... -->
+  // 4. Remove HTML comments: <!-- ... -->
   content = content.replace(/^\s*<!--\s*(.+?)\s*-->\s*$/gm, (match, text) => {
     if (USEFUL.test(text)) return match;
     totalRemoved++;
     return "";
   });
 
-  // 4. Replace em dashes with hyphens (AI overuse pattern)
+  // 5. Replace em dashes with hyphens (AI overuse pattern)
   let dashCount = 0;
   content = content.replace(/ — /g, () => { dashCount++; return " - "; });
   totalRemoved += dashCount;
 
-  // 5. Replace double hyphens used as em dashes
+  // 6. Replace double hyphens used as em dashes
   let doubleDashCount = 0;
   content = content.replace(/ -- /g, () => { doubleDashCount++; return " - "; });
   totalRemoved += doubleDashCount;
 
-  // 6. Replace curly quotes with straight quotes
+  // 7. Replace curly quotes with straight quotes
   let quoteCount = 0;
   content = content.replace(/[\u201C\u201D]/g, () => { quoteCount++; return '"'; });
   content = content.replace(/[\u2018\u2019]/g, () => { quoteCount++; return "'"; });
   totalRemoved += quoteCount;
 
-  // 7. Clean up resulting double-blank lines
+  // 8. Clean up resulting double-blank lines
   content = content.replace(/\n{3,}/g, "\n\n");
 
   if (content !== original) {
