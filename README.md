@@ -1,38 +1,66 @@
 # Michi (道)
 
-I've used React Router and TanStack Router in production for years. They work great. But I never really understood _how_ they work. So I started building one from scratch to find out.
+> What actually happens between the click and the render?
 
-Michi is an educational router built from first principles to explore the architecture behind modern routing systems. Each feature is implemented as a self-contained slice that answers one fundamental question about how client-side routing works - from the History API to nested layouts, data loading, and beyond.
+I've used React Router and TanStack Router in production for years. They work great. But I never really understood how they worked.
 
-It's not trying to replace anything. It's here to answer the question: what actually happens between the click and the render?
+So I started building one from scratch.
 
-The name 道 (michi) is Japanese for "path" or "the way." Seemed fitting.
+Michi is an educational router built from first principles to explore the architecture behind modern routing systems. Every concept is implemented incrementally, with each slice answering one fundamental question about client-side routing.
+
+It isn't trying to replace React Router or TanStack Router. It's here to answer one question: what actually happens between the click and the render?
+
+The name 道 (michi) is Japanese for "path" or "the way." Seemed fitting for a project about understanding the path every navigation takes.
 
 **[Documentation](https://michi-docs.vercel.app)** | **[Demo](https://michi.atharvdangedev.in)** | **[Blog](https://michi-docs.vercel.app/blog)**
 
-## The idea
+## The journey
 
-Every feature is built as a **slice** - a self-contained, demonstrable milestone that builds on the previous one. Each slice answers a specific question about how routing works:
+Every feature is built as a self-contained **slice**. Each slice introduces a real architectural problem and gradually builds the solution.
 
-| Slice | Status  | What it covers                                                                                |
-| ----- | ------- | --------------------------------------------------------------------------------------------- |
-| 1     | Done    | **History API** - `pushState`, `popstate`, and the core router loop                           |
-| 2     | Done    | **Route Matching** - turning URL patterns like `/user/$id` into regex that actually matches   |
-| 3     | Done    | **Nested Routes** - the route tree, `<Outlet />`, and layouts that persist across navigations |
-| 4     | Done    | **Data Loaders** - render-as-you-fetch vs fetch-on-render                                     |
-| 5     | Done    | **Error Boundaries** - isolating failures per route instead of blank screens                  |
-| 6     | Done    | **Prefetch on Hover** - running loaders early so navigation feels instant                     |
-| 7     | Done    | **Search Params** - typed, serializable state that lives in the URL                           |
-| 8     | Planned | **File-Based Routing** - codegen from filesystem, AST traversal, module resolution            |
-| 9     | Planned | **Typed Routes** - compile-time safety for paths, params, and loader data                     |
-| 10    | Planned | **Route Ranking** - why `/users/new` beats `/users/:id`, specificity resolution               |
-| 11    | Planned | **Navigation Lifecycle** - `beforeLeave`, `loader`, commit, `afterNavigate` hooks             |
-| 12    | Planned | **Structural Sharing** - granular subscriptions, skip unnecessary re-renders                  |
-| 13    | Planned | **View Transitions API** - native browser transitions between routes                          |
-| 14    | Planned | **Scroll Restoration** - restoring scroll position across navigation and history              |
-| 15    | Planned | **Abortable Navigation** - `AbortController` for every navigation, deep cancellation          |
+| Slice | Status  | Question                                                 | Concepts                                   |
+| ----- | ------- | -------------------------------------------------------- | ------------------------------------------ |
+| 1     | Done    | How does SPA navigation work without reloading the page? | History API (`pushState`, `popstate`)      |
+| 2     | Done    | How does a router know which route matches a URL?        | Route Matching, Dynamic Params, Wildcards  |
+| 3     | Done    | How do layouts persist across navigations?               | Nested Routes, Route Trees, `<Outlet />`   |
+| 4     | Done    | When should route data be fetched?                       | Data Loaders, Render-as-you-Fetch          |
+| 5     | Done    | What happens when a route fails?                         | Per-route Error Boundaries                 |
+| 6     | Done    | How can navigation feel instant?                         | Prefetch on Hover, Intent Detection        |
+| 7     | Done    | How should application state live inside URLs?           | Typed Search Params                        |
+| 8     | Planned | How does the filesystem become a route tree?             | File-Based Routing, Code Generation        |
+| 9     | Planned | How do routes get type safety at compile time?           | Typed Routes, Type Inference               |
+| 10    | Planned | Why does `/users/new` beat `/users/$id`?                 | Route Ranking, Specificity Resolution      |
+| 11    | Planned | When can navigation be cancelled or redirected?          | Navigation Lifecycle                       |
+| 12    | Planned | How do you skip re-renders for unchanged routes?         | Structural Sharing, Granular Subscriptions |
+| 13    | Planned | Can browsers animate route transitions natively?         | View Transitions API                       |
+| 14    | Planned | Why is scroll restoration so hard?                       | Scroll Restoration                         |
+| 15    | Planned | How do you cancel in-flight loaders?                     | Abortable Navigation                       |
 
-## The stack
+## What's built
+
+Slices 1 through 7 are done. The router supports:
+
+- **Dynamic params** `/user/$id` matches `/user/atharv` and extracts `{ id: "atharv" }`
+- **Wildcard routes** `/files/*` matches `/files/public/uploads/report.pdf` and captures the full path
+- **Nested layouts** `/settings` wraps its children in a sidebar layout via `<Outlet />`
+- **Pathless layouts** `_auth` wraps routes without adding a URL segment
+- **Nested outlets** 3+ levels of rendering depth (root, layout, page)
+- **Programmatic navigation** `useRouter()` hook for navigating from event handlers and effects
+- **Persistent layouts** nav and sidebars stay mounted across navigations, no remounting
+- **Data loaders** fetch data before rendering with `useLoaderData()` hook
+- **Parallel loader execution** all matched route loaders run simultaneously
+- **Loader caching** same route + same params reuses previous loader data
+- **Race condition protection** stale loader results are discarded on rapid navigation
+- **Per-route error boundaries** loader and render errors are isolated to the failing route
+- **Custom error components** each route can define its own `errorComponent`
+- **useRouteError** access the error from within an error component
+- **Prefetch on hover** run loaders early when the user hovers a link
+- **Prefetch cache** TTL-based cache with dedup, configurable delay
+- **Search params** `validateSearch` for typed, parsed URL state
+- **Search param navigation** merge or replace params with `navigate(path, { search })`
+- **useSearch** access validated search params per route
+
+## Tech stack
 
 - **Monorepo:** Turborepo + pnpm workspaces
 - **Language:** TypeScript (strict)
@@ -40,30 +68,6 @@ Every feature is built as a **slice** - a self-contained, demonstrable milestone
 - **Router package:** Pure TypeScript, zero runtime dependencies
 - **Docs:** Blume (Astro-based docs framework)
 - **Testing:** Vitest + @testing-library/react
-
-## What's done
-
-Slices 1-7 are built and working. The router supports:
-
-- **Dynamic params** - `/user/$id` matches `/user/atharv` and extracts `{ id: "atharv" }`
-- **Wildcard routes** - `/files/*` matches `/files/public/uploads/report.pdf` and captures the full path
-- **Nested layouts** - `/settings` wraps its children in a sidebar layout via `<Outlet />`
-- **Pathless layouts** - `_auth` wraps routes without adding a URL segment
-- **Nested outlets** - 3+ levels of rendering depth (root → layout → page)
-- **Programmatic navigation** - `useRouter()` hook for navigating from event handlers, effects, etc.
-- **Persistent layouts** - nav and sidebars stay mounted across navigations, no remounting
-- **Data loaders** - fetch data before rendering with `useLoaderData()` hook
-- **Parallel loader execution** - all matched route loaders run simultaneously
-- **Loader caching** - same route + same params = previous loader data reused
-- **Race condition protection** - stale loader results are discarded on rapid navigation
-- **Per-route error boundaries** - loader and render errors are isolated to the failing route
-- **Custom error components** - each route can define its own `errorComponent`
-- **useRouteError hook** - access the error from within an error component
-- **Prefetch on hover** - run loaders early when the user hovers a link
-- **Prefetch cache** - TTL-based cache with dedup, configurable delay
-- **Search params** - `validateSearch` for typed, parsed URL state
-- **Search param navigation** - merge or replace params with `navigate(path, { search })`
-- **useSearch hook** - access validated search params per route
 
 ## Getting started
 
@@ -86,11 +90,15 @@ Run the docs site:
 pnpm docs:dev
 ```
 
-Check out the blog series for deep dives into how each slice was built:
+## Documentation
 
-- [What Actually Happens When You Click a Link in React](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) - Slices 1-2 (History API + Route Matching)
-- [Layouts That Persist and Data That Arrives Before You Do](https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do) - Slices 3-4 (Nested Routes + Data Loaders)
-- [Per-Route Error Boundaries and Prefetch on Hover](https://tty.atharvdangedev.in/blog/per-route-error-boundaries-and-prefetch-on-hover) - Slices 5-6 (Error Boundaries + Prefetch + Search Params)
+Every slice has a corresponding deep-dive article explaining both the implementation and the architectural reasoning behind it.
+
+- [What Actually Happens When You Click a Link in React](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) Slices 1-2: History API + Route Matching
+- [Layouts That Persist and Data That Arrives Before You Do](https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do) Slices 3-4: Nested Routes + Data Loaders
+- [Per-Route Error Boundaries and Prefetch on Hover](https://tty.atharvdangedev.in/blog/per-route-error-boundaries-and-prefetch-on-hover) Slices 5-6: Error Boundaries and Prefetch on Hover
+
+The goal isn't just to explain how Michi works. It's to explain why modern routers were designed this way in the first place.
 
 ## The demo app
 
@@ -114,6 +122,21 @@ The demo app at `apps/demo/` showcases every feature of the router:
 /users?page=1             - Search params: pagination, sort, filter
 /users?page=abc           - Search params: validation error demo
 ```
+
+Each page demonstrates one architectural concept in isolation.
+
+## From first principles
+
+Michi is part of the **From First Principles** series, a collection of educational implementations that explore how modern web technologies work by rebuilding them from scratch.
+
+| Project                        | Core Question                                               |
+| ------------------------------ | ----------------------------------------------------------- |
+| **Michi (道)**                 | What actually happens between the click and the render?     |
+| **Hikari (光)**                | How does a modern rendering engine actually work?           |
+| **Rei (零)** _(Planned)_       | How does server state stay synchronized?                    |
+| **Reiatsu (霊圧)** _(Planned)_ | What actually happens when JavaScript talks to the network? |
+| **Tsuzumi (鼓)** _(Planned)_   | How does source code become executable code?                |
+| **Kumo (雲)** _(Planned)_      | How do edge runtimes execute JavaScript?                    |
 
 ## License
 
