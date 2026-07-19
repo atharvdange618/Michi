@@ -101,18 +101,19 @@ function BillingError() {
       <div style={calloutStyle}>
         <strong>Error isolation in action:</strong>
         <br />
-        Look at the green border around this page. That's <code style={codeStyle}>settings.tsx</code>{" "}
-        (the parent layout). It's still rendering normally even though this child route's loader
-        threw.
+        Look at the green border around this page. That's{" "}
+        <code style={codeStyle}>settings.tsx</code> (the parent layout). It's still rendering
+        normally even though this child route's loader threw.
         <br />
         <br />
-        <strong>Why:</strong> Each route gets its own <code style={codeStyle}>RouteErrorBoundary</code>.
-        The error landed on this route's <code style={codeStyle}>match.error</code>, not the parent's.
-        The settings sidebar, the nav bar, everything outside this Outlet stays untouched.
+        <strong>Why:</strong> Each route gets its own{" "}
+        <code style={codeStyle}>RouteErrorBoundary</code>. The error landed on this route's{" "}
+        <code style={codeStyle}>match.error</code>, not the parent's. The settings sidebar, the nav
+        bar, everything outside this Outlet stays untouched.
         <br />
         <br />
-        <strong>The hook:</strong> <code style={codeStyle}>useRouteError()</code> reads the error from{" "}
-        <code style={codeStyle}>RouteErrorContext</code> - the same error that landed on{" "}
+        <strong>The hook:</strong> <code style={codeStyle}>useRouteError()</code> reads the error
+        from <code style={codeStyle}>RouteErrorContext</code> - the same error that landed on{" "}
         <code style={codeStyle}>match.error</code>. It returns{" "}
         <code style={codeStyle}>undefined</code> when there's no error.
       </div>

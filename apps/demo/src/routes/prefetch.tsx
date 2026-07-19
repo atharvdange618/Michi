@@ -186,9 +186,12 @@ export default function PrefetchExplainerPage() {
         >
           <div style={labelStyle}>Custom prefetchDelay</div>
           <p style={descStyle}>
-            Default delay is 50ms. This link uses <code>prefetchDelay={"{"}500{"}"}</code> - hover
-            and hold for half a second before the prefetch fires. Useful for avoiding prefetch on
-            accidental micro-hovers.
+            Default delay is 50ms. This link uses{" "}
+            <code>
+              prefetchDelay={"{"}500{"}"}
+            </code>{" "}
+            - hover and hold for half a second before the prefetch fires. Useful for avoiding
+            prefetch on accidental micro-hovers.
           </p>
           <Link
             to="/prefetch-demo?via=slow-hover"

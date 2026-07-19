@@ -70,8 +70,8 @@ function PrefetchFailError() {
         }}
       >
         The prefetch ran when you hovered, but the loader threw. Michi logged the error to console
-        and discarded the failed result. When you clicked, the loader re-ran and failed again -
-        this time the error boundary caught it.
+        and discarded the failed result. When you clicked, the loader re-ran and failed again - this
+        time the error boundary caught it.
       </p>
 
       <div

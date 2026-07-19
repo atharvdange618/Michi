@@ -188,7 +188,10 @@ export default function UsersPage() {
           </div>
           <button
             onClick={() =>
-              router.navigate("/users", { search: { page: 1, sort: "name" }, searchMode: "replace" })
+              router.navigate("/users", {
+                search: { page: 1, sort: "name" },
+                searchMode: "replace",
+              })
             }
             style={{
               ...btnBase,

@@ -106,10 +106,9 @@ export default function NavigatePage() {
           fontFamily: "'Geist Mono', monospace",
         }}
       >
-        These call{" "}
-        <code>window.history.back()</code> / <code>window.history.forward()</code> directly, which
-        fires the <code>popstate</code> event - the same mechanism the browser's back/forward buttons
-        use.
+        These call <code>window.history.back()</code> / <code>window.history.forward()</code>{" "}
+        directly, which fires the <code>popstate</code> event - the same mechanism the browser's
+        back/forward buttons use.
       </p>
       <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
         {routes.map((r) => (

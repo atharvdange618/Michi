@@ -58,8 +58,7 @@ export default function ProfilePage() {
 
       <div style={dataBlockStyle}>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>profile loader call #:</span>{" "}
-          {data.callCount}
+          <span style={{ color: "var(--ink-faint)" }}>profile loader call #:</span> {data.callCount}
         </div>
         <div>
           <span style={{ color: "var(--ink-faint)" }}>resolved at:</span> {data.resolvedAt}
@@ -78,8 +77,7 @@ export default function ProfilePage() {
         <br />
         <br />
         <strong>Try it:</strong> Click "Billing" in the sidebar, then come back to "Profile". The
-        settings layout loader call count stays the same (cached). Only the profile loader
-        re-runs.
+        settings layout loader call count stays the same (cached). Only the profile loader re-runs.
       </div>
     </div>
   );
