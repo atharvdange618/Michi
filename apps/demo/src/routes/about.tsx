@@ -161,7 +161,7 @@ export default function AboutPage() {
             rendering strategies blog
           </a>
           <a
-            href="https://github.com/atharvdange618/React-Vdom"
+            href="https://github.com/atharvdange618/Hikari"
             target="_blank"
             rel="noopener noreferrer"
             style={outlineBtnStyle}
@@ -174,7 +174,7 @@ export default function AboutPage() {
               e.currentTarget.style.color = "var(--ink-muted)";
             }}
           >
-            React-Vdom
+            Hikari
           </a>
         </div>
       </section>
