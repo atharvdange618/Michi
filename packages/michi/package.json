@@ -2,8 +2,12 @@
   "name": "michi",
   "version": "0.0.1",
   "private": true,
+  "bin": {
+    "michi": "./bin/michi.mjs"
+  },
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./codegen": "./src/codegen.ts"
   },
   "types": "./src/index.ts",
   "scripts": {
@@ -17,9 +21,11 @@
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.2",
+    "@types/node": "^24.13.1",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "jsdom": "^29.1.1",
+    "tsx": "^4.19.2",
     "typescript": "~6.0.2",
     "vitest": "^4.1.8"
   }
