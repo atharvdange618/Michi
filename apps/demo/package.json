@@ -4,9 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "pnpm codegen && vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "codegen": "michi codegen"
   },
   "dependencies": {
     "michi": "workspace:*",
@@ -15,11 +16,12 @@
     "react-icons": "^5.6.0"
   },
   "devDependencies": {
-    "@types/node": "^24.12.3",
+    "@types/node": "^24.13.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "typescript": "~6.0.2",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "tsx": "^4.19.2"
   }
 }
