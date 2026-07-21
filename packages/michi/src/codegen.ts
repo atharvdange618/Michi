@@ -38,13 +38,8 @@ function inspectRouteFile(filePath: string): RouteFileExports {
     if (name === "errorComponent") result.hasErrorComponent = true;
   }
 
-  function isExported(
-    node: ts.Node & { modifiers?: ts.NodeArray<ts.ModifierLike> },
-  ): boolean {
-    return (
-      node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ??
-      false
-    );
+  function isExported(node: ts.Node & { modifiers?: ts.NodeArray<ts.ModifierLike> }): boolean {
+    return node.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) ?? false;
   }
 
   function visit(node: ts.Node): void {
@@ -137,8 +132,7 @@ function buildFromEntries(
   entries: fs.Dirent[],
 ): RouteNode[] {
   const files = entries.filter(
-    (e) =>
-      e.isFile() && e.name.endsWith(".tsx") && !e.name.endsWith(".test.tsx"),
+    (e) => e.isFile() && e.name.endsWith(".tsx") && !e.name.endsWith(".test.tsx"),
   );
   const dirs = entries.filter((e) => e.isDirectory());
   const dirNames = new Set(dirs.map((d) => d.name));
@@ -170,11 +164,7 @@ function buildFromEntries(
       const childEntries = fs.readdirSync(path.join(currentDir, base), {
         withFileTypes: true,
       });
-      children = buildFromEntries(
-        path.join(currentDir, base),
-        childParentPath,
-        childEntries,
-      );
+      children = buildFromEntries(path.join(currentDir, base), childParentPath, childEntries);
     }
 
     nodes.push({
@@ -196,13 +186,7 @@ function buildFromEntries(
     const childEntries = fs.readdirSync(path.join(currentDir, dir.name), {
       withFileTypes: true,
     });
-    nodes.push(
-      ...buildFromEntries(
-        path.join(currentDir, dir.name),
-        childPath,
-        childEntries,
-      ),
-    );
+    nodes.push(...buildFromEntries(path.join(currentDir, dir.name), childPath, childEntries));
   }
 
   return sortBySpecificity(nodes);
@@ -255,9 +239,7 @@ function collectImportsAndSerialize(
   imports: ImportSpec[],
   indent = 4,
 ): string {
-  const relativeFromRoutes = path
-    .relative(routesDir, node.filePath)
-    .replace(/\.tsx$/, "");
+  const relativeFromRoutes = path.relative(routesDir, node.filePath).replace(/\.tsx$/, "");
   const baseId = toIdentifier(
     relativeFromRoutes,
     `Route_${imports.length}`, // fallback for files like $.tsx with nothing nameable
@@ -297,15 +279,7 @@ function collectImportsAndSerialize(
     node.children.length > 0
       ? `,\n${pad}children: [\n${node.children
           .map(
-            (c) =>
-              childPad +
-              collectImportsAndSerialize(
-                c,
-                routesDir,
-                outDir,
-                imports,
-                indent + 4,
-              ),
+            (c) => childPad + collectImportsAndSerialize(c, routesDir, outDir, imports, indent + 4),
           )
           .join(",\n")},\n${pad}]`
       : "";
@@ -319,12 +293,7 @@ export function writeRouteTreeFile(routesDir: string, outFile: string): void {
   const outDir = path.dirname(outFile);
   const root = generateRouteTree(routesDir);
   const imports: ImportSpec[] = [];
-  const treeSource = collectImportsAndSerialize(
-    root,
-    routesDir,
-    outDir,
-    imports,
-  );
+  const treeSource = collectImportsAndSerialize(root, routesDir, outDir, imports);
 
   // detect import alias collisions - two different files producing the same
   // identifier would cause a TypeScript error in the generated file

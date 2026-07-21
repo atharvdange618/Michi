@@ -24,4 +24,6 @@ const routesDir = path.resolve(cwd, getArg("--routes-dir") ?? "src/routes");
 const outFile = path.resolve(cwd, getArg("--out-file") ?? "src/routeTree.gen.ts");
 
 writeRouteTreeFile(routesDir, outFile);
-console.log(`routeTree generated from ${path.relative(cwd, routesDir)} → ${path.relative(cwd, outFile)}`);
+console.log(
+  `routeTree generated from ${path.relative(cwd, routesDir)} → ${path.relative(cwd, outFile)}`,
+);
