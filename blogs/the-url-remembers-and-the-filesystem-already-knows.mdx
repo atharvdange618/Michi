@@ -1,0 +1,465 @@
+---
+title: "The URL Remembers, and the Filesystem Already Knows"
+publishedAt: "2026-07-22"
+tags:
+  - "react"
+  - "routing"
+  - "search-params"
+  - "codegen"
+  - "typescript"
+  - "client-side-routing"
+  - "abstract-syntax-tree"
+  - "url-search-params"
+  - "michi"
+
+featured: true
+description: "Two slices, one underlying idea: stop hand-maintaining information that already lives somewhere else. Search params turn the URL into a typed, first-class data source instead of a string every component re-parses. Codegen turns the routes folder into the single source of truth for the route tree, instead of a hand-wired array someone has to keep in sync by hand."
+summary: "Continuing the Michi router series - after error boundaries and prefetch (slice 5-6), this post covers typed search params and file-based codegen. Search params turn query strings into first-class typed data with a two-step parse/validate pipeline, while a dormant cache bug gets exposed and fixed. Codegen reads the filesystem's folder structure and AST exports to generate the route tree automatically, eliminating hand-wired route arrays."
+---
+
+The last post covered error boundaries and prefetch on hover - containing failure, and getting a head start before a click even lands. Both of those slices reused machinery that already existed. This post covers two slices that do something slightly different: they take information that used to live only inside a developer's head, or only inside hand-written code, and move it somewhere the computer can read it directly.
+
+Slice 7 asks: what happens to state that belongs in the URL but isn't a route parameter? Pagination, filters, sort order - things that change the _view_ into a page without changing which route you're on. Slice 8 asks something almost architectural: what if the route tree didn't need to be hand-written at all, because the folder structure of your route files already contains almost everything needed to build it?
+
+Both slices share the same underlying move. Something that used to require a human to keep two things in sync - the URL string and a parsed object, or a folder structure and a hand-written array - gets reduced to one canonical source, with everything else mechanically derived from it.
+
+## The Problem With State That Isn't a Param
+
+Every route so far gets data from two places: path segments (`params`, since Slice 2) and whatever a loader fetches (since Slice 4). Neither covers a common case - state that should live in the URL, survive a refresh, work with the back button, but isn't part of the route's _identity_ the way `/user/$id`'s `id` is.
+
+Pagination is the clearest example. `/users` showing page 2 versus page 3 is still the same route. You wouldn't define `/users/page2` and `/users/page3` as separate routes - what changed isn't which page you're on, it's the _view_ into the same list. Query strings exist for this. But a query string arrives as raw text - `?page=2` isn't a number sitting in the URL, it's the two characters `2`, nothing more. Code wants to write `page + 1`, not remember to `parseInt` it correctly at every single place it gets touched.
+
+```ascii
+Two Separate Translation Problems
+
+Deserialization (URL -> typed object)          Serialization (typed object -> URL)
+
+"?page=2&filter=active"                         { page: 2, filter: "active" }
+        |                                                |
+        v  parseSearchParams (syntax only)               v  serializeSearchParams
+{ page: "2", filter: "active" }                 "?page=2&filter=active"
+   still strings, both of them                   undefined/null values dropped
+        |                                        (this is how deleting a key works)
+        v  validateSearch (route-specific)
+{ page: 2, filter: "active" }
+   page is now really a number
+```
+
+`parseSearchParams` only understands query-string _syntax_ - it has no idea what any value is supposed to mean. That's `validateSearch`'s job, and it's route-specific:
+
+```ts
+export function validateSearch(raw: Record<string, string>): UsersSearch {
+  const page = raw.page ? parseInt(raw.page, 10) : 1;
+  if (!Number.isFinite(page) || page < 1) {
+    throw new Error(`Invalid page param: "${raw.page}"`);
+  }
+  return { page };
+}
+```
+
+Deliberately just a plain function, not a schema object from some validation library. The router only ever cares that you hand it something callable - you could use Zod _inside_ your own `validateSearch` if you wanted to, but `packages/michi` itself never imports one. Zero runtime dependencies, kept intact.
+
+<Callout type="info">
+  **Why a plain function and not a schema?** The router's contract is "give me a
+  function that returns a typed object or throws." What happens inside that
+  function is entirely your choice - Zod, Yup, manual validation, or raw
+  `parseInt`. Keeping the boundary at the function level means the router never
+  needs to know which validation library you picked, and you never pay for a
+  dependency you didn't choose.
+</Callout>
+
+## Parsing and Building Query Strings Without a Dependency
+
+```ts
+export function parseSearchParams(search: string): Record<string, string> {
+  const stripped = search.startsWith("?") ? search.slice(1) : search;
+  const params = new URLSearchParams(stripped);
+  const result: Record<string, string> = {};
+  for (const [key, value] of params.entries()) {
+    result[key] = value;
+  }
+  return result;
+}
+```
+
+`URLSearchParams` is a browser and Node built-in, not an npm package - the same philosophy `matchRoute` already leaned on with `decodeURIComponent` back in Slice 2. Reach for the platform primitive instead of reinventing it, but never reach for a _package_ to do it. URL-encoded characters, spaces, special characters in values - all handled correctly for free. `parseSearchParams` converts the result to a plain `Record<string, string>` because everything downstream (validateSearch, `useSearch()`, `LoaderContext.search`) expects an ordinary object, not a `URLSearchParams` instance with its own API surface.
+
+```ts
+export function serializeSearchParams(search: Record<string, unknown>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === "object") {
+      console.warn(
+        `Michi: search param "${key}" is an object and will be serialized as "[object Object]". ` +
+          `Use primitive values (string, number, boolean) in search params.`,
+      );
+    }
+    params.set(key, String(value));
+  }
+  const str = params.toString();
+  return str ? `?${str}` : "";
+}
+```
+
+The `undefined`/`null` skip does more work than it looks like - it's what makes deleting a search param possible without a separate delete API. Spread `{ ...currentSearch, filter: undefined }`, and this loop just never writes that key into the output. The key silently vanishes from the URL. `undefined` _is_ the unset signal.
+
+<Callout type="warning">
+  **`undefined` is the delete signal, and there is no other.** If you need to
+  remove a search param, spread it as `undefined` - there is no
+  `removeSearchParam()` API, and there shouldn't be one. This is the same
+  pattern `URLSearchParams` itself uses: setting a value to `null` or deleting
+  the key both achieve the same result. The serialization loop here just never
+  writes the key at all.
+</Callout>
+
+## A Bug That's Been Dormant Since Slice 4
+
+Here's the part worth being honest about, because it's a real correctness bug, not a new feature. `runLoaders`'s caching check, `hasChanged`, only ever compared `routeId` and `params`:
+
+```ascii
+Before the fix
+
+Navigate /users?page=1  ->  /users?page=2
+
+routeId:  "/users"  ===  "/users"        same
+params:   {}        ===  {}              same
+hasChanged returns FALSE - loader skipped
+Page 1's cached data renders under a URL that says page 2
+```
+
+Nothing depended on anything outside `routeId`/`params` for its data until search became real. The moment a loader could reasonably read `ctx.search.page`, the gap turned from theoretical into an active bug. One line closes it:
+
+```ts
+function hasChanged(prev: RouteMatch | undefined, next: RouteMatch): boolean {
+  if (!prev) return true;
+  if (prev.routeId !== next.routeId) return true;
+  if (JSON.stringify(prev.params) !== JSON.stringify(next.params)) return true;
+  if (JSON.stringify(prev.rawSearch) !== JSON.stringify(next.rawSearch))
+    return true;
+  return false;
+}
+```
+
+The field is `rawSearch`, not `search` - it holds the raw `Record<string, string>` straight from the URL, before any route-specific validation runs. This is what the cache check needs to compare: did the URL's query string actually change? The typed `search` output from `validateSearch` is derived from `rawSearch`, so comparing `rawSearch` is both sufficient and cheaper (no need to serialize validated objects that might hold non-JSON-serializable values). Search now participates in the exact same staleness check that already protected params. Same category of bug as Slice 4's original loader re-run gap - dormant until a feature made it reachable, then worth flagging clearly rather than quietly patching and moving on.
+
+<Callout type="info">
+  **Dormant bugs are still bugs.** The `hasChanged` function was correct for
+  every feature that existed at the time it was written. Search params just
+  happened to be the first feature that exposed the gap. This is a pattern worth
+  watching for: any time a new data source gets added to a cache check, the
+  existing comparison logic may need updating - not because it was wrong before,
+  but because the set of inputs it needs to care about just grew.
+</Callout>
+
+## `navigate()` Learns to Update Just the Search
+
+```ts
+navigate(to: string, options?: NavigateOptions): void {
+  if (!options?.search) {
+    this.history.push(to)
+    return
+  }
+
+  const { pathname, search: toSearchStr } = splitPath(to)
+  const baseSearch = toSearchStr
+    ? parseSearchParams(toSearchStr)
+    : parseSearchParams(this.state.location.search)
+
+  const patch =
+    typeof options.search === "function" ? options.search(baseSearch) : options.search
+
+  const finalSearch = options.searchMode === "replace" ? patch : { ...baseSearch, ...patch }
+
+  this.history.push(pathname + serializeSearchParams(finalSearch))
+}
+```
+
+Nobody passing a `search` option means `navigate` behaves exactly as it always has - the early return keeps every previous call site in the codebase working unchanged. The function form of `search` exists because "increment the page" needs to know the current page, and having the router hand you `prev` is more reliable than trusting the caller tracked it correctly themselves. `searchMode` defaults to `"merge"` - patch specific keys, leave the rest of the URL's search params alone - deliberately named to avoid colliding conceptually with `history.replace()`, which is a completely unrelated concept.
+
+```ascii
+Clicking "Next" on /users?page=1
+
+router.navigate('/users', {
+  search: prev => ({ ...prev, page: Number(prev.page) + 1 })
+})
+        |
+        v
+baseSearch = parseSearchParams(current URL's search) -> { page: "1" }
+        |
+        v
+patch = search fn called with baseSearch -> { page: 2 }
+        |
+        v
+finalSearch = { ...baseSearch, ...patch } -> { page: 2 }   (merge mode)
+        |
+        v
+history.push('/users' + serializeSearchParams({ page: 2 }))
+        |
+        v
+'/users?page=2' pushed - pushState fires, notify() called (Slice 1's mechanism)
+        |
+        v
+matchTree finds /users, applySearch validates { page: '2' } -> { page: 2 }
+        |
+        v
+hasChanged: routeId same, params same, rawSearch DIFFERENT -> loader re-runs
+        |
+        v
+fetchUsersPage(2) - a real fetch, not the stale page-1 cache
+```
+
+Every step in that chain is either code that already existed doing exactly what it always did, or this slice's small addition slotting into an existing seam. Nothing needed a parallel system, the same theme as Slice 6's prefetch reusing the loader pipeline instead of duplicating it.
+
+One detail worth naming: `applySearch` doesn't read `validateSearch` off each `RouteMatch` object. The Router builds a centralized `validators` map once at construction time, keyed by route path, and passes it to `applySearch` on every navigation. Each match also gets a `rawSearch` field set to the unvalidated `Record<string, string>` from the URL. That `rawSearch` is what `hasChanged` actually compares, and it's what a route without a `validateSearch` function gets as its `search` value by default, so nothing is ever `undefined` for a route that simply didn't bother defining validation.
+
+## Two of Three "First-Class" Properties Were Already Free
+
+TanStack Router's search params survive refresh, work with the back button, and are shareable via a plain link. The honest, slightly surprising thing: two of those three came for free, from Slice 1, with zero new code this slice.
+
+`history.getLocation()` has read the _entire_ URL - path and search together - since the very first `History` class ever existed. Reload the browser, and the constructor calls it exactly as it always has. It doesn't know or care that search now means something semantically richer; it just reads whatever's in the address bar. Refresh survival, for free, because search state never lived anywhere except the URL to begin with. Same story for back and forward - `pushState` has never distinguished "the path changed" from "the search changed." One opaque URL as far as the history stack is concerned.
+
+What Slice 7 added was the new part: typed access. Before this slice, getting `page` as a number meant reaching into `useRouterState().location.search` by hand, in every component that needed it, with no validation. `useSearch<UsersSearch>()` now gives the same ergonomic promise `useLoaderData<T>()` already made back in Slice 4.
+
+## Structural Sharing: The Gap We Called Out, Then Half-Closed
+
+Every match `runLoaders` returns from its cache-hit branch used to be a brand new object, even when nothing about it changed:
+
+```ts
+// Before
+if (!hasChanged(prev, match) && !prev!.error && !match.error) {
+  return { ...match, loaderData: prev!.loaderData, error: undefined };
+}
+```
+
+`{ ...match, ... }` always allocates. `hasChanged` correctly identifies "skip the refetch" - a genuine correctness win - but it doesn't save an object _identity_. Every element of `resolvedMatches` ends up freshly allocated on every navigation, changed or not, which means `useSyncExternalStore`'s snapshot comparison always sees a new reference and re-renders every hook subscribed via `useRouterState()`, even for a layout whose data never actually changed.
+
+```ascii
+Object identity, before and after
+
+Before:  navigate() -> spread creates new object -> resolvedMatches[i] !== previousMatches[i]
+         always, even when routeId/params/search are all identical
+
+After:   navigate() -> return prev! directly -> resolvedMatches[i] === previousMatches[i]
+         when nothing meaningfully changed
+```
+
+The fix, after sitting with this for a bit, turned out to be one line:
+
+```ts
+// After
+if (!hasChanged(prev, match) && !prev!.error && !match.error) {
+  return prev!;
+}
+```
+
+Verified safe: no downstream code checks reference equality on `match.search` specifically (it's re-derived every navigation regardless, per Slice 7's own design), and both error fields are already guaranteed falsy by the surrounding condition. A test now locks this in - navigate between sibling routes and confirm the root match keeps its exact reference while only the child match's reference changes.
+
+Worth being precise about what this closes and what it doesn't. Individual match objects now preserve identity across navigations where they didn't change - that half is real and shipped. What's still missing is the second half: something downstream actually _checking_ that identity and skipping a re-render because of it. `RouterState` itself - the `{ location, matches, status }` wrapper `commitNavigation` returns - is still a brand new object on every single navigation, because `matches` is still a new _array_ even when its unchanged elements are the same objects inside it. `useSyncExternalStore` compares the top-level snapshot, sees a different reference regardless, and every subscribed hook still re-renders.
+
+Closing that fully was discussed directly - a `useRouterSelector` primitive, where each hook picks its own slice of state with a stable selector, so `useSyncExternalStore` can bail out per-hook instead of per-store. The decision was made, and deliberately deferred to its own dedicated slice on the roadmap rather than folded in here as a rushed afterthought. The honest cost of what's still open: no wasted network fetches (that's what `hasChanged` protects), no wasted remounts (React's reconciler handles that independently, since Slice 3), just a wasted re-render - the component function runs again, produces identical JSX, React diffs it, and throws the work away. Cheap enough to never notice in most apps, real enough to be worth naming precisely rather than glossing over.
+
+---
+
+## Slice 8: What If the Folder Structure Already Told You Everything
+
+Every route file until Slice 8 got wired in by hand. Open `main.tsx`, add an import, add an entry to a nested array, get the nesting right, remember the `loader` import if there is one. Twenty routes meant twenty places a mistake could slip in.
+
+The insight the whole slice rests on: the folder structure already contains almost all of this information. `user/$id.tsx` living at that exact path already tells you the route pattern is `/user/$id`. The only thing missing from a bare directory listing is which of `loader`, `validateSearch`, `errorComponent` each file exports - that's not something a filename can encode, you have to look inside the file.
+
+## A Required Reorg, Before Any Code
+
+One relationship existed only in `main.tsx`'s hand-written array and nowhere on disk: `_auth.tsx` wrapping `dashboard.tsx`. A folder-driven script has no way to infer a relationship that was only ever expressed in code.
+
+```ascii
+Before (relationship only in main.tsx)     After (relationship on disk)
+
+routes/                                     routes/
+  _auth.tsx                                   _auth.tsx
+  dashboard.tsx      <- siblings              _auth/
+  dashboard/                                    dashboard.tsx   <- nested
+    index.tsx                                   dashboard/
+    analytics.tsx                                 index.tsx
+  files/                                          analytics.tsx
+    $wildcard.tsx    <- wrong convention        files/
+                                                   $.tsx         <- renamed
+```
+
+Two mechanical changes: nest `dashboard.tsx` and `dashboard/` inside a new `_auth/` folder, so the layout relationship is expressed the same way `dashboard.tsx` + `dashboard/` already demonstrates one level down. And rename `$wildcard.tsx` to `$.tsx` - the file's own code already reads a param literally keyed `"*"`, so `$wildcard` would have produced a dynamic param named `wildcard`, not the actual wildcard segment the route needs.
+
+## Looking Inside a File Without Running It
+
+Two ways exist to find out "does this file export a `loader`": actually import the module and check `typeof mod.loader`, or parse the file's text into an AST and look for export declarations, never executing anything. Michi does the second.
+
+```ts
+function inspectRouteFile(filePath: string): RouteFileExports {
+  const sourceText = fs.readFileSync(filePath, "utf-8");
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  // ...walk every node, check for export function/const shapes
+}
+```
+
+`ts.createSourceFile` parses text into a tree without ever executing a single line - a route file's `export function loader() { throw new Error() }` is safe to inspect this way, because nothing inside it runs. `typescript` was already a devDependency for `tsc --build`, so this adds zero new dependencies to the project - just a new use of one already there. The walk checks two shapes per export (`export function name() {}` and `export const name = ...`), because that's how every route file in this project writes them, plus two shapes of default export (`export default function Page() {}` and `export default SomePage;`).
+
+## Filename Rules That Barely Need Translating
+
+| Filename      | Meaning                                                  |
+| ------------- | -------------------------------------------------------- |
+| `__root.tsx`  | Root layout, handled as a singleton, wraps everything    |
+| `_prefix.tsx` | Pathless layout - no URL segment contributed             |
+| `index.tsx`   | Takes its parent's own path, no segment appended         |
+| `$.tsx`       | Wildcard `*`                                             |
+| anything else | Static segment, or `$id`-style dynamic segment unchanged |
+
+The elegant part: for both dynamic segments and layout routes, the filename convention and `matchTree`'s own pattern syntax are _already identical_. `$id` in a filename is exactly the string `matchRoute` already knows how to compile. `startsWith("_")` in the filename detector is the literal same check `isLayoutRoute` makes at runtime. Almost nothing needs translating - the one genuine exception is `$.tsx` to `*`, since a bare `$` alone isn't a valid param name.
+
+## Two Kinds of Folder, Two Different Behaviors
+
+```ascii
+Owned folder (layout relationship)       Bare namespace folder (no owner)
+
+dashboard.tsx                             errors/
+dashboard/                                  loader-fail.tsx
+  index.tsx      <- these nest UNDER        render-fail.tsx
+  analytics.tsx     dashboard.tsx as
+                     its children           no errors.tsx exists anywhere
+dashboard.tsx becomes a layout node        contents splice directly into
+wrapping its folder's contents             the parent array - no extra
+                                             layout node created
+```
+
+A file paired with a same-named directory owns that directory's contents as children - `dashboard.tsx` + `dashboard/` is the same relationship `_auth.tsx` + `_auth/` demonstrates for a pathless layout. A directory with _no_ matching file - `errors/`, `showcase/`, `user/` - is pure namespacing. Its contents get spliced directly into the parent's route array, contributing only their own path segment, with nothing rendering just because a URL happened to pass through that folder.
+
+## An Ordering Bug, Caught Before It Could Bite
+
+`fs.readdirSync` returns entries in whatever order the filesystem provides - typically alphabetical, not a cross-platform guarantee. That's harmless until a static route and a dynamic route become siblings, because `matchTree` is first-match-wins, and `$` sorts before letters in ASCII.
+
+```ts
+function specificityTier(node: RouteNode): number {
+  if (node.isLayout) return 0;
+  if (node.routeId.includes("*")) return 3;
+  if (node.routeId.includes("$")) return 2;
+  return 1;
+}
+
+function sortBySpecificity(nodes: RouteNode[]): RouteNode[] {
+  return [...nodes].sort((a, b) => {
+    const tierDiff = specificityTier(a) - specificityTier(b);
+    if (tierDiff !== 0) return tierDiff;
+    return a.routeId.localeCompare(b.routeId);
+  });
+}
+```
+
+Four tiers - layout, static, dynamic, wildcard - checked in order, alphabetical within each tier for deterministic output regardless of filesystem ordering. A test locks in exactly the failure scenario this guards against: `$id.tsx` and `analytics.tsx` written in an order where alphabetical listing would put `$id` first, asserting `analytics` still comes out ahead in the generated array. This is a minimal defensive sort, not the full route ranking system - that's its own slice further down the roadmap - but it closes the most common class of ordering bug before it ever has a chance to silently swallow a route.
+
+## Turning a Tree Into Text
+
+The generated file needs real `import` statements and a real nested object literal, not just path strings. Every node contributes an import for its default export, and - only if `inspectRouteFile` actually found it - an aliased import for `loader`, `validateSearch`, `errorComponent`:
+
+```ts
+if (node.exports.hasLoader) {
+  const alias = `${baseId}Loader`;
+  imports.push({ name: "loader", alias, from: importFrom });
+  extraFields.push(`loader: ${alias}`);
+}
+```
+
+A route with no `loader` never gets a phantom `loader:` line or a useless import - the generated code is exactly as complete as each source file is. Imports get grouped by module path before being written out, so a file with three exports produces one consolidated `import` statement instead of three separate lines pointing at the same file - purely a readability improvement in the generated output, since JS module evaluation is already deduplicated by the runtime regardless of how many import statements reference the same specifier.
+
+One more safeguard, caught at generation time rather than surfacing as a confusing error inside a file marked "do not edit": two different files can produce the same generated identifier (`user-list.tsx` and `user_list.tsx` would both become `UserList`). A collision check throws immediately, naming both files, rather than letting that silently produce broken TypeScript in the output.
+
+## The CLI, and Proving the Output Actually Runs
+
+```ts
+#!/usr/bin/env tsx
+import * as path from "node:path";
+import { writeRouteTreeFile } from "./codegen";
+
+const args = process.argv.slice(2);
+// ...flag parsing, then:
+writeRouteTreeFile(routesDir, outFile);
+```
+
+A single file with a `#!/usr/bin/env tsx` shebang. The `tsx` shebang registers itself as the ESM loader hook, then runs the TypeScript file directly, no separate build step needed. Exposed via a `bin` field in `packages/michi/package.json`, which means any app in the monorepo gets `michi codegen` for free through pnpm's workspace linking, accepting `--routes-dir` and `--out-file` flags with sensible defaults.
+
+The most convincing test in the whole suite doesn't just check the generated text looks plausible - it transpiles the generated output with `ts.transpileModule`, stubs out the imports, and evaluates the result in a sandboxed `new Function()`:
+
+```ts
+const routeTree = (sandbox.exports as any).routeTree;
+expect(Array.isArray(routeTree)).toBe(true);
+expect(typeof routeTree[0].component).toBe("function");
+expect(typeof users.loader).toBe("function");
+```
+
+Proof that the generated file isn't just text shaped like TypeScript, but valid, executable code producing exactly the object shape `Router` expects - without needing a bundler or the actual demo app running to verify it.
+
+## File-Based Routing Is Not Magic
+
+Strip away the mystique and the whole thing reduces to two boring primitives: `fs.readdirSync` to look at what's on disk, `fs.writeFileSync` to put text into a file. Run `pnpm codegen` from a plain terminal, independent of Vite or a dev server being up - it's the same category of command as a linter or a formatter. The generated file itself is the proof: open it, and it's just plain TypeScript. Nothing `main.tsx` couldn't have imported if someone had typed the exact same text by hand.
+
+The mental model people often bring to file-based routing - that a framework is somehow watching the filesystem and routes just appear - isn't what's happening in any of them. A script runs, reads a directory, writes a file full of ordinary imports and an ordinary array. The only thing bigger frameworks add on top is convenience: wiring that script to rerun automatically so it _feels_ live. The generation step itself is this unglamorous.
+
+<Callout type="warning">
+  **The generated file is unconditionally overwritten every run.** There is no
+  read-merge, no diff against what was there before. The write is
+  `fs.writeFileSync` with the full contents. This is intentional - any merge
+  logic would be a source of drift. The only thing keeping the file correct is
+  that it's mechanically derived from the real source files, and the header
+  comment saying not to edit it is a social contract, not an enforcement
+  mechanism.
+</Callout>
+
+## The Generated File Is a Source of Truth, Half of It
+
+Worth being precise about what's true right now versus what Slice 9 still owns. `routeTree` today is typed as `RouteDefinition[]` - real type-checking, but a broad one. TypeScript doesn't yet know `/user/$id` specifically exists as a valid literal path, or that navigating there specifically requires an `id` param. That's explicitly Slice 9's job, not built yet.
+
+What's already true: there's exactly one input - the directory - and everything downstream gets mechanically extracted from that same input in the same script run. Compare that to hand-typing a `type ValidPaths = "/user/$id" | "/about" | ...` union alongside a hand-written array, with nothing enforcing the two stay in sync. Add a route, forget the type, and the type system confidently lies. Codegen removes the possibility of that drift, because there's nothing left to drift _from_ - one directory, one script, one output.
+
+And that's exactly why `routeTree.gen.ts` never gets edited by hand. The write is unconditional - `fs.writeFileSync`, no read-merge, no diff against what's already there. Every run replaces the whole file's contents. The header comment saying not to edit it is just a comment, not an enforcement mechanism - nothing technically stops anyone from typing into it, the same way nothing stops anyone from hand-editing a compiled bundle. It only works because the file's entire value comes from staying in lockstep with the real source files on disk, and any hand-edit is a claim about the codebase that the next codegen run will silently, correctly erase.
+
+## Key Takeaways
+
+**The URL is the only place search state needs to live.** Refresh survival and back-button support came free from Slice 1's `History` class - it always read the whole URL, path and search together. Slice 7's genuine addition was typed access on top of state that was already first-class.
+
+**A cache check is only as good as what it compares.** `hasChanged` silently missed search for three slices because nothing exercised the gap until search became real data a loader could read. The fix was one line; noticing the gap existed was the harder part.
+
+**Object identity and render-skipping are two separate problems.** Preserving a reference (`return prev!`) is a one-line fix. Actually acting on that preserved reference to skip a re-render needs its own subscription model - real enough to matter, deliberately scoped to its own slice rather than rushed.
+
+**A filesystem convention only works if the filesystem actually encodes it.** `_auth` wrapping `dashboard` had to become real folder nesting before any script could derive it - the relationship can't live in code and expect a filesystem-driven tool to see it.
+
+**Static analysis beats dynamic execution for a codegen tool.** Parsing a file's AST to detect its exports means a broken route file's code is safe to inspect - nothing in it ever runs during generation.
+
+**A generated file's value is entirely about staying in lockstep with one real input.** The moment you hand-edit output that's mechanically derived from something else, you've created a lie that the next generation run will silently correct - which reveals it was never really a fix.
+
+---
+
+## References
+
+### Michi
+
+- [Michi GitHub Repository](https://github.com/atharvdange618/Michi)
+
+### Search Params
+
+- [MDN - URLSearchParams](https://developer.mozilla.org/en-US/docs/Web/API/URLSearchParams) - the Web Platform built-in behind parseSearchParams/serializeSearchParams
+- [TanStack Router - Search Params guide](https://tanstack.com/router/latest/docs/framework/react/guide/search-params) - the real search-param story this slice draws from, including the parts still out of scope here
+
+### Structural Sharing
+
+- [React docs - useSyncExternalStore](https://react.dev/reference/react/useSyncExternalStore) - the snapshot comparison mechanism that makes object identity matter at all
+- [Redux - Structuring Reducers, reference equality](https://redux.js.org/usage/deriving-data-selectors) - the same reference-equality-for-render-skipping pattern in a different ecosystem
+
+### Codegen and AST
+
+- [TypeScript - Compiler API Wiki](https://github.com/microsoft/TypeScript/wiki/Using-the-Compiler-API) - the ts.createSourceFile / ts.forEachChild primitives this slice's AST walk is built on
+- [TanStack Router - File-Based Routing guide](https://tanstack.com/router/latest/docs/framework/react/routing/file-based-routing) - the real filename convention this slice's mapping draws from
+- [tsx - TypeScript Execute](https://tsx.hirok.io) - the loader used to run the CLI without a separate build step
+
+---
