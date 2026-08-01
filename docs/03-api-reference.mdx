@@ -12,6 +12,7 @@ type RouteDefinition = {
   path: string;
   component: ComponentType;
   loader?: (ctx: LoaderContext<any, any>) => Promise<unknown>;
+  validateSearch?: (raw: Record<string, string>) => unknown;
   errorComponent?: ComponentType<{ error: unknown }>;
   children?: RouteDefinition[];
 };
@@ -22,6 +23,7 @@ type RouteDefinition = {
 | `path`           | URL pattern. Static (`/about`), dynamic (`/user/$id`), or wildcard (`/files/*`). Paths starting with `_` are layout routes. |
 | `component`      | React component to render when this route matches.                                                                          |
 | `loader`         | Optional async function that runs before the component renders. Receives `LoaderContext` with `params` and `search`.        |
+| `validateSearch` | Optional function that parses and validates raw search params. Returns a typed object or throws on invalid input.            |
 | `errorComponent` | Optional error boundary component. Renders when the loader throws or the component crashes. Receives `{ error: unknown }`.  |
 | `children`       | Nested route definitions. When a child matches, the parent acts as a layout wrapper.                                        |
 
@@ -31,6 +33,8 @@ type RouteDefinition = {
 type RouteMatch = {
   routeId: string;
   params: Record<string, string>;
+  rawSearch?: Record<string, string>;
+  search?: unknown;
   loaderData: unknown;
   errorComponent?: ComponentType<{ error: unknown }>;
   error?: unknown;
@@ -46,11 +50,8 @@ type RouterState = {
   location: ParsedLocation;
   matches: RouteMatch[];
   status: "idle" | "loading" | "error";
-  error?: unknown;
 };
 ```
-
-The `error` field is populated when a loader throws at the top level (a bug in the router itself, not in your app code). Individual route loader errors live on `RouteMatch.error` instead.
 
 ### `ParsedLocation`
 
@@ -81,7 +82,7 @@ type LoaderContext<
 ```ts
 class Router {
   constructor(routes: RouteDefinition[], options?: RouterOptions);
-  navigate(to: string): void;
+  navigate(to: string, options?: NavigateOptions): void;
   prefetch(to: string): Promise<RouteMatch[]>;
   getState(): RouterState;
   subscribe(callback: () => void): () => void;
@@ -99,6 +100,20 @@ type RouterOptions = {
 ```
 
 Configure router behavior. `prefetchTtlMs` controls how long prefetched loader results stay in cache before expiring.
+
+### `NavigateOptions`
+
+```ts
+type NavigateOptions = {
+  search?: Record<string, unknown> | ((prev: Record<string, string>) => Record<string, unknown>);
+  searchMode?: "merge" | "replace"; // default: "merge"
+};
+```
+
+| Field        | Description                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------- |
+| `search`     | Search params to set. Pass an object to merge, or a function that receives the current raw search and returns the new params. |
+| `searchMode` | `"merge"` patches specific keys, leaving others alone. `"replace"` overwrites all search params. |
 
 ## React Components
 
@@ -191,3 +206,11 @@ function ErrorComponent() {
 Returns the error caught by the current route's error boundary. Use inside an `errorComponent`. The error is typed as `unknown` -- narrow it yourself with `instanceof Error` or `String(error)`.
 
 Can be called from any component inside the error boundary's tree, not just the top-level error component. This is useful when your error UI has nested components that also need access to the error without prop drilling.
+
+### `useSearch`
+
+```ts
+const { page, filter } = useSearch<{ page: number; filter: string }>();
+```
+
+Returns the validated search params for the current route. Type the generic to get typed search params. Requires a `validateSearch` function to be defined on the route -- returns raw `Record<string, string>` if no validator is set.

@@ -20,12 +20,12 @@ prefetch(to: string): Promise<RouteMatch[]> {
   const { pathname, search } = splitPath(to);
   const key = pathname + search;
   return this.prefetchCache.getOrCreate(key, () =>
-    runLoaders(this.match(pathname), this.state.matches),
+    runLoaders(this.match(pathname, search), this.state.matches),
   );
 }
 ```
 
-`this.match(pathname)` is `matchTree`, the exact function that runs on every real navigation. `runLoaders(...)` is the exact function from `loader.ts` that Slice 4 built and Slice 5 hardened. The only new code is the caching wrapper around it.
+`this.match(pathname, search)` is `matchTree` plus `applySearch` -- the exact functions that run on every real navigation. `runLoaders(...)` is the exact function from `loader.ts` that Slice 4 built and Slice 5 hardened. The only new code is the caching wrapper around it.
 
 ## The Prefetch Cache
 
@@ -120,7 +120,7 @@ if (cached) this.prefetchCache.delete(key);
 
 const resolvedMatchesPromise = cached
   ? cached
-  : runLoaders(this.match(location.pathname), this.previousMatches);
+  : runLoaders(this.match(location.pathname, location.search), this.previousMatches);
 ```
 
 `peek`, not `getOrCreate`. We don't want to start a fetch if one doesn't exist. If there's a cached entry, use its promise directly and delete it from the cache (consumed). If not, fall back to a fresh `runLoaders` call, exactly as it worked before this slice.

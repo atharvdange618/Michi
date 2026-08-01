@@ -49,7 +49,7 @@ When the regex matches, the captured values come back as an array. Pair them wit
 
 ```ts matcher.ts
 paramNames.forEach((name, i) => {
-  params[name] = match[i + 1];
+  params[name] = decodeURIComponent(match[i + 1]);
 });
 // { id: 'atharv' }
 ```

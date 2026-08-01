@@ -69,13 +69,7 @@ export async function loader({ params }: LoaderContext<{ id: string }>) {
 }
 ```
 
-Wire it into your route definition:
-
-```ts
-import UserPage, { loader as userLoader } from './routes/user/$id';
-
-{ path: '/user/$id', component: UserPage, loader: userLoader }
-```
+With codegen, just export the function from your route file. The codegen detects it automatically via AST inspection -- no manual wiring needed. Run `pnpm codegen` after adding a new export.
 
 ## useLoaderData: The OutletContext Trick
 
@@ -104,13 +98,27 @@ export async function runLoaders(
   return Promise.all(
     pendingMatches.map(async (match, index) => {
       const prev = previousMatches[index];
-      if (!hasChanged(prev, match)) {
-        return { ...match, loaderData: prev!.loaderData };
+
+      if (!hasChanged(prev, match) && !prev!.error && !match.error) {
+        return prev!;
       }
-      if (!match.loader) return match;
-      const ctx: LoaderContext = { params: match.params, search: {} };
-      const loaderData = await match.loader(ctx);
-      return { ...match, loaderData };
+
+      if (match.error) {
+        return { ...match, loaderData: undefined };
+      }
+
+      if (!match.loader) return { ...match, error: undefined };
+
+      try {
+        const ctx: LoaderContext = {
+          params: match.params,
+          search: (match.search ?? {}) as Record<string, string>,
+        };
+        const loaderData = await match.loader(ctx);
+        return { ...match, loaderData, error: undefined };
+      } catch (error) {
+        return { ...match, loaderData: undefined, error };
+      }
     }),
   );
 }
@@ -140,11 +148,12 @@ function hasChanged(prev: RouteMatch | undefined, next: RouteMatch): boolean {
   if (!prev) return true;
   if (prev.routeId !== next.routeId) return true;
   if (JSON.stringify(prev.params) !== JSON.stringify(next.params)) return true;
+  if (JSON.stringify(prev.rawSearch) !== JSON.stringify(next.rawSearch)) return true;
   return false;
 }
 ```
 
-If the route and its params have not changed, the loader is skipped and the previous `loaderData` is reused. Navigate from `/user/atharv` to `/user/atharv` and zero network requests fire.
+If the route, its params, and its search params have not changed, the loader is skipped and the previous `loaderData` is reused. Navigate from `/user/atharv` to `/user/atharv` and zero network requests fire.
 
 ## The Race Condition Guard
 

@@ -41,7 +41,10 @@ It is a one-way chain. Nothing in this loop talks back up. History does not know
 | `router.ts`  | `Router` class that subscribes to History changes, runs matching, maintains state                                      |
 | `matcher.ts` | `matchRoute()` (single pattern) and `matchTree()` (recursive tree matching)                                            |
 | `loader.ts`  | `runLoaders()` executes all route loaders in parallel with race condition protection                                   |
-| `react.tsx`  | React bindings: `RouterProvider`, `Link`, `Outlet`, hooks (`useRouter`, `useParams`, `useLoaderData`, `useRouteError`) |
+| `search-params.ts` | `parseSearchParams`, `serializeSearchParams`, `applySearch` for typed URL search state                          |
+| `prefetch.ts` | TTL-based prefetch cache with deduplication                                                                     |
+| `codegen.ts` | AST-based route tree generation from filesystem                                                                   |
+| `react.tsx`  | React bindings: `RouterProvider`, `Link`, `Outlet`, hooks (`useRouter`, `useParams`, `useLoaderData`, `useRouteError`, `useSearch`) |
 
 <FileTree>
 - packages/
@@ -52,8 +55,10 @@ It is a one-way chain. Nothing in this loop talks back up. History does not know
       - router.ts
       - matcher.ts
       - loader.ts
-      - react.tsx
+      - search-params.ts
       - prefetch.ts
+      - codegen.ts
+      - react.tsx
       - components/
         - not-found.tsx
         - loading.tsx
@@ -111,5 +116,11 @@ Michi uses `useSyncExternalStore` (not `useState`) to subscribe to the Router's 
   </Card>
   <Card title="Prefetch on Hover" href="/features/prefetch-on-hover" icon="zap">
     Making navigation feel instant by running loaders before the click.
+  </Card>
+  <Card title="Search Params" href="/features/search-params" icon="search">
+    Typed, serializable URL state with validateSearch.
+  </Card>
+  <Card title="File-Based Routing" href="/features/file-based-routing" icon="folder-tree">
+    Codegen from filesystem via AST inspection.
   </Card>
 </CardGroup>

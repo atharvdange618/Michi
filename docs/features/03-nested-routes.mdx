@@ -96,9 +96,15 @@ export function Outlet({
   if (!match) return <>{fallback}</>;
 
   return (
-    <OutletContext.Provider value={matchIndex + 1}>
-      <match.component />
-    </OutletContext.Provider>
+    <RouteErrorBoundary
+      key={matchKey(match)}
+      error={match.error}
+      errorComponent={match.errorComponent}
+    >
+      <OutletContext.Provider value={matchIndex + 1}>
+        <match.component />
+      </OutletContext.Provider>
+    </RouteErrorBoundary>
   );
 }
 ```

@@ -25,9 +25,15 @@ Every feature is built as a **slice** -- a self-contained, demonstrable mileston
 | 4     | <Badge variant="success">Done</Badge> | **Data Loaders** - render-as-you-fetch with parallel execution             |
 | 5     | <Badge variant="success">Done</Badge> | **Error Boundaries** - isolating failures per route                        |
 | 6     | <Badge variant="success">Done</Badge> | **Prefetch on Hover** - running loaders early                              |
-| 7     | <Badge>Planned</Badge> | **Search Params** - typed, serializable URL state                          |
-| 8     | <Badge>Planned</Badge> | **File-Based Routing** - codegen from filesystem                           |
+| 7     | <Badge variant="success">Done</Badge> | **Search Params** - typed, serializable URL state                          |
+| 8     | <Badge variant="success">Done</Badge> | **File-Based Routing** - codegen from filesystem                           |
 | 9     | <Badge>Planned</Badge> | **Typed Routes** - compile-time path and param safety                      |
+| 10    | <Badge>Planned</Badge> | **Route Ranking** - why `/users/new` beats `/users/$id`                    |
+| 11    | <Badge>Planned</Badge> | **Navigation Lifecycle** - `beforeLeave`, `afterNavigate` hooks            |
+| 12    | <Badge>Planned</Badge> | **Structural Sharing** - granular subscriptions, skip re-renders           |
+| 13    | <Badge>Planned</Badge> | **View Transitions API** - native browser transitions                      |
+| 14    | <Badge>Planned</Badge> | **Scroll Restoration** - restoring scroll across navigation                |
+| 15    | <Badge>Planned</Badge> | **Abortable Navigation** - `AbortController` for every nav                 |
 
 ## The stack
 
@@ -39,7 +45,7 @@ Every feature is built as a **slice** -- a self-contained, demonstrable mileston
 
 ## What's done
 
-Slices 1 through 6 are built and working. The router supports:
+Slices 1 through 8 are built and working. The router supports:
 
 - **Dynamic params** -- `/user/$id` matches `/user/atharv` and extracts `{ id: "atharv" }`
 - **Wildcard routes** -- `/files/*` matches `/files/public/uploads/report.pdf`
@@ -54,6 +60,11 @@ Slices 1 through 6 are built and working. The router supports:
 - **Per-route error boundaries** -- loader and render errors are isolated to the failing route
 - **Custom error components** -- each route can define its own `errorComponent`
 - **Prefetch on hover** -- run loaders early when the user hovers a link
+- **Typed search params** -- `validateSearch` for parsing and validating URL search state
+- **`useSearch()` hook** -- typed access to search params per route
+- **Search param navigation** -- merge or replace params with `navigate(path, { search })`
+- **File-based routing** -- codegen from filesystem via AST inspection
+- **Route tree generation** -- `routeTree.gen.ts` generated from folder structure
 
 ## Explore the docs
 

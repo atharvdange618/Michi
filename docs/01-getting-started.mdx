@@ -15,33 +15,66 @@ pnpm install
 
 The router package lives at `packages/michi`. The demo app lives at `apps/demo`.
 
-## Setting up the Router
+## Project Structure
 
-Define your route tree and wrap your app in `RouterProvider`:
+Create a `routes/` folder for your route files. The folder structure determines the route tree:
+
+```text
+src/
+  routes/
+    __root.tsx          - Root layout (wraps everything)
+    index.tsx           - Home page (/)
+    about.tsx           - About page (/about)
+    user/
+      $id.tsx           - Dynamic route (/user/:id)
+    settings.tsx        - Layout for /settings/*
+    settings/
+      profile.tsx       - /settings/profile
+      billing.tsx       - /settings/billing
+  main.tsx              - Entry point
+```
+
+### Filename Rules
+
+| Filename      | Meaning                                                |
+| ------------- | ------------------------------------------------------ |
+| `__root.tsx`  | Root layout, wraps everything                          |
+| `_prefix.tsx` | Pathless layout, no URL segment contributed            |
+| `index.tsx`   | Takes its parent's path, no segment appended           |
+| `$.tsx`       | Wildcard `*`                                           |
+| `$id.tsx`     | Dynamic param segment                                  |
+| anything else | Static segment                                         |
+
+A file paired with a same-named directory acts as a layout for that directory's contents. For example, `settings.tsx` + `settings/` means `settings.tsx` wraps `settings/profile.tsx` and `settings/billing.tsx`.
+
+## Generate the Route Tree
+
+Run the codegen command to read your `routes/` folder and generate the route tree:
+
+```bash
+pnpm codegen
+```
+
+This produces `src/routeTree.gen.ts` -- a file with real imports and a nested object literal. It detects which exports each route file provides (`loader`, `validateSearch`, `errorComponent`) by parsing the AST, without executing any code.
+
+**Do not edit `routeTree.gen.ts` by hand.** It gets overwritten every time you run `pnpm codegen`.
+
+## Set Up the Router
+
+Import the generated tree and pass it to `Router`:
 
 ```tsx main.tsx
 import { Router, RouterProvider } from "michi";
-import RootLayout from "./routes/__root";
-import HomePage from "./routes/index";
-import AboutPage from "./routes/about";
-import UserPage from "./routes/user/$id";
+import { routeTree } from "./routeTree.gen";
 
-const router = new Router([
-  {
-    path: "__root",
-    component: RootLayout,
-    children: [
-      { path: "/", component: HomePage },
-      { path: "/about", component: AboutPage },
-      { path: "/user/$id", component: UserPage },
-    ],
-  },
-]);
+const router = new Router(routeTree);
 
 function App() {
   return <RouterProvider router={router} />;
 }
 ```
+
+That's it. No manual route definitions, no imports to wire up. The folder structure is the source of truth.
 
 ## Writing a Route Component
 
@@ -58,7 +91,7 @@ export default function UserPage() {
 
 ## Adding a Loader
 
-Loaders fetch data before the component renders. Export a `loader` function and pass it to the route definition:
+Loaders fetch data before the component renders. Export a `loader` function from the route file. The codegen picks it up automatically -- no manual wiring needed:
 
 ```tsx routes/user/$id.tsx
 import { useParams, useLoaderData } from "michi";
@@ -80,13 +113,7 @@ export default function UserPage() {
 }
 ```
 
-Wire it into the route definition:
-
-```tsx main.tsx
-import UserPage, { loader as userLoader } from "./routes/user/$id";
-
-{ path: "/user/$id", component: UserPage, loader: userLoader }
-```
+Run `pnpm codegen` again after adding a new export, and the generated tree updates to include it.
 
 ## Programmatic Navigation
 
@@ -114,7 +141,7 @@ import { Link } from "michi";
 
 ## Error Handling
 
-Each route can define a custom error component:
+Each route can define a custom error component. Export `errorComponent` from the route file and the codegen picks it up:
 
 ```tsx routes/user/$id.tsx
 export function errorComponent({ error }: { error: unknown }) {
@@ -122,7 +149,7 @@ export function errorComponent({ error }: { error: unknown }) {
 }
 ```
 
-Or handle errors at the loader level -- errors thrown in loaders are caught and rendered by the route's error boundary without crashing the rest of the app.
+Errors thrown in loaders are caught and rendered by the route's error boundary without crashing the rest of the app.
 
 ## Next Steps
 

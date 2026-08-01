@@ -1,0 +1,124 @@
+---
+title: Search Params
+description: Typed, serializable URL state with validateSearch.
+---
+
+## The Gap Between URL and Code
+
+Every route so far gets data from two places: path segments (`params`) and whatever a loader fetches. Neither covers a common case: state that should live in the URL, survive a refresh, work with the back button, but isn't part of the route's identity the way `/user/$id`'s `id` is.
+
+Pagination is the clearest example. `/users` showing page 2 versus page 3 is still the same route. You wouldn't define `/users/page2` and `/users/page3` as separate routes. Query strings exist for this. But a query string arrives as raw text. `?page=2` isn't a number sitting in the URL, it's the two characters `2`, nothing more.
+
+## Two-Step Pipeline: Parse, Then Validate
+
+Search params go through two distinct translation steps:
+
+```text
+Deserialization (URL -> typed object)          Serialization (typed object -> URL)
+
+"?page=2&filter=active"                         { page: 2, filter: "active" }
+        |                                                |
+        v  parseSearchParams (syntax only)               v  serializeSearchParams
+{ page: "2", filter: "active" }                 "?page=2&filter=active"
+   still strings, both of them                   undefined/null values dropped
+        |                                        (this is how deleting a key works)
+        v  validateSearch (route-specific)
+{ page: 2, filter: "active" }
+   page is now really a number
+```
+
+`parseSearchParams` only understands query-string syntax. It has no idea what any value is supposed to mean. That's `validateSearch`'s job, and it's route-specific:
+
+```ts
+export function validateSearch(raw: Record<string, string>): UsersSearch {
+  const page = raw.page ? parseInt(raw.page, 10) : 1;
+  if (!Number.isFinite(page) || page < 1) {
+    throw new Error(`Invalid page param: "${raw.page}"`);
+  }
+  return { page };
+}
+```
+
+Deliberately just a plain function, not a schema object. The router only ever cares that you hand it something callable. You could use Zod inside your own `validateSearch`, but `packages/michi` itself never imports one. Zero runtime dependencies, kept intact.
+
+## Parsing Without a Dependency
+
+`parseSearchParams` uses the platform built-in `URLSearchParams`, not an npm package:
+
+```ts
+export function parseSearchParams(search: string): Record<string, string> {
+  const stripped = search.startsWith("?") ? search.slice(1) : search;
+  const params = new URLSearchParams(stripped);
+  const result: Record<string, string> = {};
+  for (const [key, value] of params.entries()) {
+    result[key] = value;
+  }
+  return result;
+}
+```
+
+The result is a plain `Record<string, string>` because everything downstream expects an ordinary object, not a `URLSearchParams` instance.
+
+## Serialization and the `undefined` Delete Signal
+
+```ts
+export function serializeSearchParams(search: Record<string, unknown>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(search)) {
+    if (value === undefined || value === null) continue;
+    if (typeof value === "object") {
+      console.warn(
+        `Michi: search param "${key}" is an object and will be serialized as "[object Object]". ` +
+          `Use primitive values (string, number, boolean) in search params.`,
+      );
+    }
+    params.set(key, String(value));
+  }
+  const str = params.toString();
+  return str ? `?${str}` : "";
+}
+```
+
+The `undefined`/`null` skip is what makes deleting a search param possible without a separate delete API. Spread `{ ...currentSearch, filter: undefined }`, and this loop just never writes that key into the output. `undefined` is the unset signal.
+
+## `navigate()` With Search
+
+The `navigate()` method accepts an optional `search` option:
+
+```ts
+router.navigate('/users', {
+  search: prev => ({ ...prev, page: Number(prev.page) + 1 })
+})
+```
+
+Nobody passing a `search` option means `navigate` behaves exactly as it always has. The function form exists because "increment the page" needs to know the current page, and having the router hand you `prev` is more reliable than trusting the caller tracked it correctly themselves.
+
+`searchMode` defaults to `"merge"`: patch specific keys, leave the rest alone. Set it to `"replace"` to overwrite all search params instead.
+
+## The `useSearch()` Hook
+
+```ts
+const { page } = useSearch<UsersSearch>();
+```
+
+Gives typed access to the validated search params for the current route. Works the same way `useLoaderData()` does: type parameter tells TypeScript what shape to expect, runtime validation handles the rest.
+
+## The `hasChanged` Bug Fix
+
+When search params were first added, the loader caching check (`hasChanged`) only compared `routeId` and `params`. Navigating from `/users?page=1` to `/users?page=2` hit the cache and rendered stale data. The fix added `rawSearch` to the comparison:
+
+```ts
+if (JSON.stringify(prev.rawSearch) !== JSON.stringify(next.rawSearch))
+  return true;
+```
+
+`rawSearch` holds the unvalidated `Record<string, string>` from the URL. Comparing it is both sufficient and cheaper than comparing validated objects that might hold non-JSON-serializable values.
+
+## Key Files
+
+| File              | Purpose                                                        |
+| ----------------- | -------------------------------------------------------------- |
+| `search-params.ts` | `parseSearchParams`, `serializeSearchParams`, `applySearch`   |
+| `router.ts`       | `navigate()` search options, `validators` map at construction |
+| `react.tsx`       | `useSearch()` hook                                             |
+| `loader.ts`       | `hasChanged` includes `rawSearch` in cache check               |

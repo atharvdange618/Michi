@@ -29,7 +29,7 @@ Every feature is built as a self-contained **slice**. Each slice introduces a re
 | 5     | Done    | What happens when a route fails?                         | Per-route Error Boundaries                 |
 | 6     | Done    | How can navigation feel instant?                         | Prefetch on Hover, Intent Detection        |
 | 7     | Done    | How should application state live inside URLs?           | Typed Search Params                        |
-| 8     | Planned | How does the filesystem become a route tree?             | File-Based Routing, Code Generation        |
+| 8     | Done    | How does the filesystem become a route tree?             | File-Based Routing, Code Generation        |
 | 9     | Planned | How do routes get type safety at compile time?           | Typed Routes, Type Inference               |
 | 10    | Planned | Why does `/users/new` beat `/users/$id`?                 | Route Ranking, Specificity Resolution      |
 | 11    | Planned | When can navigation be cancelled or redirected?          | Navigation Lifecycle                       |
@@ -40,7 +40,7 @@ Every feature is built as a self-contained **slice**. Each slice introduces a re
 
 ## What's built
 
-Slices 1 through 7 are done. The router supports:
+Slices 1 through 8 are done. The router supports:
 
 - **Dynamic params** `/user/$id` matches `/user/atharv` and extracts `{ id: "atharv" }`
 - **Wildcard routes** `/files/*` matches `/files/public/uploads/report.pdf` and captures the full path
@@ -61,6 +61,8 @@ Slices 1 through 7 are done. The router supports:
 - **Search params** `validateSearch` for typed, parsed URL state
 - **Search param navigation** merge or replace params with `navigate(path, { search })`
 - **useSearch** access validated search params per route
+- **File-based routing** codegen from filesystem via AST inspection
+- **Route tree generation** `routeTree.gen.ts` generated from folder structure
 
 ## Tech stack
 
@@ -99,6 +101,7 @@ Every slice has a corresponding deep-dive article explaining both the implementa
 - [What Actually Happens When You Click a Link in React](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) Slices 1-2: History API + Route Matching
 - [Layouts That Persist and Data That Arrives Before You Do](https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do) Slices 3-4: Nested Routes + Data Loaders
 - [Per-Route Error Boundaries and Prefetch on Hover](https://tty.atharvdangedev.in/blog/per-route-error-boundaries-and-prefetch-on-hover) Slices 5-6: Error Boundaries and Prefetch on Hover
+- [The URL Remembers, and the Filesystem Already Knows](https://tty.atharvdangedev.in/blog/the-url-remembers-and-the-filesystem-already-knows) Slices 7-8: Search Params + File-Based Codegen
 
 The goal isn't just to explain how Michi works. It's to explain why modern routers were designed this way in the first place.
 

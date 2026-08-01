@@ -1,0 +1,120 @@
+---
+title: File-Based Routing
+description: Codegen from filesystem via AST inspection.
+---
+
+## The Problem With Hand-Wired Route Trees
+
+Every route file until Slice 8 got wired in by hand. Open `main.tsx`, add an import, add an entry to a nested array, get the nesting right, remember the `loader` import if there is one. Twenty routes meant twenty places a mistake could slip in.
+
+The insight: the folder structure already contains almost all of this information. `user/$id.tsx` living at that exact path already tells you the route pattern is `/user/$id`. The only thing missing from a bare directory listing is which of `loader`, `validateSearch`, `errorComponent` each file exports. That's not something a filename can encode, you have to look inside the file.
+
+## Filename Rules
+
+| Filename      | Meaning                                                  |
+| ------------- | -------------------------------------------------------- |
+| `__root.tsx`  | Root layout, handled as a singleton, wraps everything    |
+| `_prefix.tsx` | Pathless layout - no URL segment contributed             |
+| `index.tsx`   | Takes its parent's own path, no segment appended         |
+| `$.tsx`       | Wildcard `*`                                             |
+| anything else | Static segment, or `$id`-style dynamic segment unchanged |
+
+For both dynamic segments and layout routes, the filename convention and `matchTree`'s own pattern syntax are already identical. `$id` in a filename is exactly the string `matchRoute` already knows how to compile. `startsWith("_")` in the filename detector is the literal same check `isLayoutRoute` makes at runtime.
+
+## Two Kinds of Folder
+
+A file paired with a same-named directory owns that directory's contents as children:
+
+```text
+dashboard.tsx + dashboard/     ->  dashboard.tsx is a layout wrapping its folder's contents
+```
+
+A directory with no matching file is pure namespacing:
+
+```text
+errors/                         ->  contents splice directly into the parent array
+                                    no extra layout node created
+```
+
+## AST-Based Export Detection
+
+Two ways exist to find out "does this file export a `loader`": actually import the module and check, or parse the file's text into an AST and look for export declarations, never executing anything. Michi does the second.
+
+```ts
+function inspectRouteFile(filePath: string): RouteFileExports {
+  const sourceText = fs.readFileSync(filePath, "utf-8");
+  const sourceFile = ts.createSourceFile(
+    filePath,
+    sourceText,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  // ...walk every node, check for export function/const shapes
+}
+```
+
+`ts.createSourceFile` parses text into a tree without ever executing a single line. A route file's `export function loader() { throw new Error() }` is safe to inspect this way, because nothing inside it runs. `typescript` was already a devDependency, so this adds zero new dependencies.
+
+The walk checks two shapes per export (`export function name() {}` and `export const name = ...`), plus two shapes of default export (`export default function Page() {}` and `export default SomePage;`).
+
+## Specificity Sorting
+
+`fs.readdirSync` returns entries in whatever order the filesystem provides. That's harmless until a static route and a dynamic route become siblings, because `matchTree` is first-match-wins, and `$` sorts before letters in ASCII.
+
+The fix: four tiers checked in order, alphabetical within each tier:
+
+```ts
+function specificityTier(node: RouteNode): number {
+  if (node.isLayout) return 0;
+  if (node.routeId.includes("*")) return 3;
+  if (node.routeId.includes("$")) return 2;
+  return 1;
+}
+```
+
+Layout (0), static (1), dynamic (2), wildcard (3). Deterministic output regardless of filesystem ordering.
+
+## The CLI
+
+Exposed via a `bin` field in `packages/michi/package.json`:
+
+```bash
+pnpm codegen --routes-dir ./src/routes --out-file ./src/routeTree.gen.ts
+```
+
+A single file with a `#!/usr/bin/env tsx` shebang. The `tsx` shebang registers itself as the ESM loader hook, then runs the TypeScript file directly. No separate build step needed.
+
+## The Generated File
+
+The output is real `import` statements and a real nested object literal:
+
+```ts
+// GENERATED FILE - DO NOT EDIT
+// Run `pnpm codegen` to regenerate from routes
+
+import type { RouteDefinition } from "michi";
+import HomePage from "./routes/index";
+import AboutPage from "./routes/about";
+// ...
+
+export const routeTree: RouteDefinition[] = [{
+  path: "__root",
+  component: RootLayout,
+  children: [
+    { path: "/", component: HomePage },
+    { path: "/about", component: AboutPage },
+  ]
+}];
+```
+
+A route with no `loader` never gets a phantom `loader:` line or a useless import. Imports get grouped by module path before being written out. A collision check catches two different files producing the same generated identifier.
+
+The file is unconditionally overwritten every run. No read-merge, no diff. Any merge logic would be a source of drift.
+
+## Key Files
+
+| File         | Purpose                                                  |
+| ------------ | -------------------------------------------------------- |
+| `codegen.ts` | `generateRouteTree`, `writeRouteTreeFile`, AST inspection |
+| `cli.ts`     | `#!/usr/bin/env tsx` entry point for the codegen command  |
