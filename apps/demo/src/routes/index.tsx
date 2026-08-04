@@ -1,5 +1,5 @@
 import type { CSSProperties } from "react";
-import { Link } from "michi";
+import { Link, type NavigateTo } from "michi";
 import { useSEO } from "../components/use-seo";
 
 const featureCardStyle: CSSProperties = {
@@ -96,10 +96,12 @@ const features = [
   {
     title: "404 Not Found",
     desc: "Navigate to a route that doesn't match any pattern",
-    to: "/this-does-not-exist",
+    // deliberately not a registered path - this card demonstrates the 404 page,
+    // so the cast is intentional, not a typo being silenced
+    to: "/this-does-not-exist" as NavigateTo,
     tag: "Slice 2",
   },
-];
+] as const;
 
 export default function IndexPage() {
   useSEO({

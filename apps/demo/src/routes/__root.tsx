@@ -1,4 +1,4 @@
-import { Link, Outlet } from "michi";
+import { Link, Outlet, type NavigateTo } from "michi";
 import type { CSSProperties } from "react";
 import { Footer } from "../components/footer";
 
@@ -22,7 +22,7 @@ const structuredData = {
 const navSections: Array<{
   label: string;
   links: Array<{
-    to: string;
+    to: NavigateTo;
     label: string;
     prefetch?: "intent" | "none";
     external?: boolean;

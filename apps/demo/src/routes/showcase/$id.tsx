@@ -1,12 +1,14 @@
-import { useParams } from "michi";
+import { defineRoute } from "michi";
 import { useSEO } from "../../components/use-seo";
 
+export const Route = defineRoute("/showcase/$id");
+
 export default function ParamsShowcasePage() {
-  const params = useParams<{ id: string }>();
+  const { id } = Route.useParams();
   useSEO({
-    title: `Params: ${params.id}`,
-    description: `URL parameter "${params.id}" extracted via useParams() - no loader required. Demo of dynamic route parameters.`,
-    path: `/showcase/${params.id}`,
+    title: `Params: ${id}`,
+    description: `URL parameter "${id}" extracted via useParams() - no loader required. Demo of dynamic route parameters.`,
+    path: `/showcase/${id}`,
   });
 
   return (
@@ -69,7 +71,7 @@ export default function ParamsShowcasePage() {
               letterSpacing: "-0.02em",
             }}
           >
-            {params.id}
+            {id}
           </div>
         </div>
 
@@ -97,7 +99,7 @@ export default function ParamsShowcasePage() {
             }}
           >
             {`{
-  id: "${params.id}"
+  id: "${id}"
 }`}
           </pre>
         </div>
@@ -118,11 +120,11 @@ export default function ParamsShowcasePage() {
           <span style={{ color: "var(--ink-faint)" }}>route pattern:</span> /showcase/$id
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>actual URL: </span> /showcase/{params.id}
+          <span style={{ color: "var(--ink-faint)" }}>actual URL: </span> /showcase/{id}
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>hook: </span> useParams&lt;{`{ id: string }`}
-          &gt;()
+          <span style={{ color: "var(--ink-faint)" }}>hook: </span> Route.useParams() &mdash; typed
+          from route pattern, no generic needed
         </div>
         <div>
           <span style={{ color: "var(--ink-faint)" }}>loader: </span> none (sync extraction)

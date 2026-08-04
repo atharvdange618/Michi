@@ -1,13 +1,16 @@
-import { type LoaderContext, useLoaderData } from "michi";
-import { type User, fetchUser } from "../../mocks/api";
+import { defineRoute, type LoaderContext } from "michi";
+import { fetchUser } from "../../mocks/api";
 import { useSEO } from "../../components/use-seo";
+
+export const Route = defineRoute("/user/$id");
 
 export async function loader({ params }: LoaderContext<{ id: string }>) {
   return fetchUser(params.id);
 }
 
 export default function UserPage() {
-  const user = useLoaderData<User>();
+  const user = Route.useLoaderData();
+  const { id } = Route.useParams();
   useSEO({
     title: `User: ${user.name}`,
     description: `User profile for ${user.name} (${user.email}) - demo of loader + useLoaderData() for data fetching in a client-side router.`,
@@ -135,6 +138,11 @@ export default function UserPage() {
           <span style={{ color: "var(--ink-faint)" }}>route pattern:</span> /user/$id
         </div>
         <div>
+          <span style={{ color: "var(--ink-faint)" }}>Route.useParams():</span> {'{ id: "'}
+          {id}
+          {'" }'}
+        </div>
+        <div>
           <span style={{ color: "var(--ink-faint)" }}>actual URL: </span> /user/
           {user.id}
         </div>
@@ -143,7 +151,8 @@ export default function UserPage() {
           User object
         </div>
         <div>
-          <span style={{ color: "var(--ink-faint)" }}>hook: </span> useLoaderData&lt;User&gt;()
+          <span style={{ color: "var(--ink-faint)" }}>hook: </span> Route.useLoaderData() - typed
+          from the loader's real return type, no generic needed
         </div>
       </div>
     </div>

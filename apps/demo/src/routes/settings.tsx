@@ -10,7 +10,7 @@ export async function loader(_: LoaderContext) {
 const links = [
   { to: "/settings/profile", label: "Profile" },
   { to: "/settings/billing", label: "Billing" },
-];
+] as const;
 
 const badgeStyle: CSSProperties = {
   display: "inline-flex",

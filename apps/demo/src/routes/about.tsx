@@ -319,6 +319,46 @@ export default function AboutPage() {
               June 20
             </span>
           </a>
+          <a
+            href="https://tty.atharvdangedev.in/blog/the-url-remembers-and-the-filesystem-already-knows"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={blogCardStyle}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.transform = "translateY(-1px)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "var(--border-subtle)";
+              e.currentTarget.style.transform = "translateY(0)";
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontWeight: 600,
+                  fontSize: "14px",
+                  marginBottom: "2px",
+                }}
+              >
+                The URL Remembers, and the Filesystem Already Knows
+              </div>
+              <div style={{ fontSize: "13px", color: "var(--ink-muted)" }}>
+                Search params, codegen, typed routes - Slices 7-8
+              </div>
+            </div>
+            <span
+              style={{
+                fontSize: "12px",
+                fontFamily: "'Geist Mono', monospace",
+                color: "var(--ink-faint)",
+                whiteSpace: "nowrap",
+                marginLeft: "1rem",
+              }}
+            >
+              July 22
+            </span>
+          </a>
         </div>
       </section>
 

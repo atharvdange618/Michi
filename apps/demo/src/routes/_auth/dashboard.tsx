@@ -5,7 +5,7 @@ import { useSEO } from "../../components/use-seo";
 const links = [
   { to: "/dashboard", label: "Overview" },
   { to: "/dashboard/analytics", label: "Analytics" },
-];
+] as const;
 
 const badgeStyle: CSSProperties = {
   display: "inline-flex",

@@ -1,10 +1,12 @@
 import type { CSSProperties } from "react";
 import { useRef, useEffect, useState } from "react";
-import { useSearch, useLoaderData, useRouter, type LoaderContext } from "michi";
+import { defineRoute, useRouter, type LoaderContext } from "michi";
 import { useSEO } from "../components/use-seo";
-import { fetchUsersPage, type UsersPage } from "../mocks/api";
+import { fetchUsersPage } from "../mocks/api";
 
 type UsersSearch = { page: number; sort: "name" | "date"; filter?: string };
+
+export const Route = defineRoute("/users");
 
 export function validateSearch(raw: Record<string, string>): UsersSearch {
   const page = raw.page ? parseInt(raw.page, 10) : 1;
@@ -95,8 +97,8 @@ const filterInputStyle: CSSProperties = {
 };
 
 export default function UsersPage() {
-  const search = useSearch<UsersSearch>();
-  const data = useLoaderData<UsersPage>();
+  const search = Route.useSearch();
+  const data = Route.useLoaderData();
   const router = useRouter();
   const filterTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -432,13 +434,17 @@ export function validateSearch(raw) {
   return { page, sort, filter };
 }
 
+// Pin hooks to this route's types (no manual generics)
+export const Route = defineRoute("/users");
+
 // Loader receives validated, typed search
 export async function loader({ search }) {
   return fetchUsersPage(search.page, search.sort, search.filter);
 }
 
-// Component reads typed search params
-const { page, sort, filter } = useSearch();
+// Component reads typed search params - no generic needed
+const search = Route.useSearch();    // { page, sort, filter }
+const data = Route.useLoaderData();  // UsersPage
 
 // Merge mode (default) - preserves other params
 router.navigate("/users", {
@@ -461,7 +467,11 @@ router.navigate("/users", {
       <div style={{ ...metaBlockStyle, marginTop: "6px" }}>
         <div>
           <span style={{ color: "var(--ink-faint)" }}>hook: </span>
-          useSearch&lt;{`{ page, sort, filter }`}&gt;()
+          Route.useSearch() &mdash; typed from validateSearch, no generic needed
+        </div>
+        <div>
+          <span style={{ color: "var(--ink-faint)" }}>loaderData: </span>
+          Route.useLoaderData() &mdash; typed from loader return type
         </div>
         <div>
           <span style={{ color: "var(--ink-faint)" }}>schema: </span>

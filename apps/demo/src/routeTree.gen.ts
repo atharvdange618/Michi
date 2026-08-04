@@ -1,7 +1,7 @@
 // GENERATED FILE - DO NOT EDIT
 // Run `pnpm codegen` to regenerate from src\routes
 
-import type { RouteDefinition } from "michi";
+import type { RouteDefinition, RouteInfoOf } from "michi";
 import Root from "./routes/__root";
 import Auth from "./routes/_auth";
 import AuthDashboard from "./routes/_auth/dashboard";
@@ -38,7 +38,13 @@ import ShowcaseId from "./routes/showcase/$id";
 import UserId, { loader as UserIdLoader } from "./routes/user/$id";
 import Files from "./routes/files/$";
 
-export const routeTree: RouteDefinition[] = [
+// "as const satisfies" instead of a ": RouteDefinition[]" annotation - the annotation
+// would widen every literal (path strings, loader/validateSearch return types) down to
+// RouteDefinition's own loose signatures before TypeScript ever gets to see them. "as const"
+// is what actually preserves those literals through the whole nested children tree;
+// "satisfies" checks the shape against RouteDefinition without discarding what "as const"
+// preserved, the way a ":" annotation would.
+export const routeTree = [
   {
     path: "__root",
     component: Root,
@@ -144,4 +150,17 @@ export const routeTree: RouteDefinition[] = [
       },
     ],
   },
-];
+] as const satisfies RouteDefinition[];
+
+// Powers Slice 9's typed routes: path -> { params, search, loaderData } for every
+// navigable route, derived once here from the same tree the runtime router reads.
+type GeneratedRouteInfo = RouteInfoOf<typeof routeTree>;
+
+// Declaration merging, not a real export - lets "michi"'s hooks (defineRoute,
+// navigate(), <Link to>) resolve this app's specific route types without the
+// package ever importing this file. See RouteRegistry in michi's types.ts.
+declare module "michi" {
+  interface RouteRegistry {
+    routes: GeneratedRouteInfo;
+  }
+}

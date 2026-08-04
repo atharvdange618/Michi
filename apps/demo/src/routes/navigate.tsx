@@ -25,7 +25,7 @@ const routes = [
   { label: "Go to /showcase/michi", path: "/showcase/michi" },
   { label: "Go to /files/a/b/c", path: "/files/a/b/c" },
   { label: "Go to /settings/profile", path: "/settings/profile" },
-];
+] as const;
 
 export default function NavigatePage() {
   useSEO({
@@ -146,6 +146,53 @@ export default function NavigatePage() {
             </span>
           </button>
         ))}
+      </div>
+
+      <div
+        style={{
+          marginTop: "2.5rem",
+          padding: "1.25rem 1.5rem",
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-lg)",
+          background: "var(--surface)",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "12px",
+            fontFamily: "'Geist Mono', monospace",
+            color: "var(--ink-faint)",
+            marginBottom: "8px",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+          }}
+        >
+          type safety
+        </div>
+        <pre
+          style={{
+            fontFamily: "'Geist Mono', monospace",
+            fontSize: "13px",
+            lineHeight: 1.8,
+            margin: 0,
+            whiteSpace: "pre-wrap",
+            color: "var(--ink-muted)",
+          }}
+        >
+          {`// Paths are checked at compile time - typos are errors
+router.navigate("/settings/profile");  // ✓ registered path
+router.navigate("/nonexistent");       // ✗ type error
+
+// <Link> gets the same checking
+<Link to="/settings/profile" />  // ✓
+<Link to="/nonexistent" />       // ✗ type error
+
+// External URLs always pass
+<Link to="https://github.com" />  // ✓
+
+// The routes array above is \`as const\`,
+// so each path is a literal type, not just string.`}
+        </pre>
       </div>
     </div>
   );
