@@ -6,7 +6,17 @@ export type {
   LoaderContext,
   RouterOptions,
   NavigateOptions,
+  RouteRegistry,
 } from "./types";
+export type {
+  ParsePathParams,
+  PathsOf,
+  RouteInfoOf,
+  TypedPath,
+  RegisteredRoutes,
+  RegisteredPath,
+  NavigateTo,
+} from "./typed";
 export { Router } from "./router";
 export {
   RouterProvider,
@@ -19,6 +29,7 @@ export {
   useRouteError,
   useRouter,
   type LinkProps,
+  defineRoute,
 } from "./react";
 export { Loading } from "./components/loading";
 export { NotFound } from "./components/not-found";

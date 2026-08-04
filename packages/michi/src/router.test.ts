@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { Router } from "./router";
 import type { RouteDefinition } from "./types";
+import type { NavigateTo } from "./typed";
 
 let mockPathname = "/";
 
@@ -173,7 +174,7 @@ describe("Router", () => {
     setMockPathname("/");
     const router = new Router(routes);
     await waitForIdle(router);
-    router.navigate("/nonexistent");
+    router.navigate("/nonexistent" as NavigateTo);
     await waitForIdle(router);
 
     const state = router.getState();
@@ -187,10 +188,10 @@ describe("Router", () => {
     await waitForIdle(router);
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    router.navigate("");
+    router.navigate("" as NavigateTo);
     expect(router.getState().location.pathname).toBe("/");
 
-    router.navigate("about");
+    router.navigate("about" as NavigateTo);
     expect(router.getState().location.pathname).toBe("/");
 
     warn.mockRestore();
@@ -260,7 +261,7 @@ describe("Loaders", () => {
       statuses.push(router.getState().status);
     });
 
-    router.navigate("/slow");
+    router.navigate("/slow" as NavigateTo);
     await vi.waitFor(
       () => {
         expect(statuses).toContain("loading");
@@ -305,8 +306,8 @@ describe("Loaders", () => {
     const router = new Router(routesWithLoaders);
     await waitForIdle(router);
 
-    router.navigate("/slow");
-    router.navigate("/fast");
+    router.navigate("/slow" as NavigateTo);
+    router.navigate("/fast" as NavigateTo);
 
     resolveSecond!({ page: "fast" });
     await waitForIdle(router);
@@ -461,7 +462,7 @@ describe("Loaders", () => {
 
     const router = new Router(routesWithLoader);
     await waitForIdle(router);
-    router.navigate("/fail");
+    router.navigate("/fail" as NavigateTo);
     await waitForIdle(router);
 
     const state = router.getState();
@@ -490,7 +491,7 @@ describe("Loaders", () => {
     const router = new Router(routesWithLoader);
     await waitForIdle(router);
 
-    router.navigate("/flaky");
+    router.navigate("/flaky" as NavigateTo);
     await waitForIdle(router);
     let state = router.getState();
     let match = state.matches.find((m) => m.routeId === "/flaky");
@@ -498,7 +499,7 @@ describe("Loaders", () => {
     expect((match!.error as Error).message).toBe("temporary failure");
 
     shouldFail = false;
-    router.navigate("/flaky");
+    router.navigate("/flaky" as NavigateTo);
     await waitForIdle(router);
     state = router.getState();
     match = state.matches.find((m) => m.routeId === "/flaky");
@@ -522,11 +523,11 @@ describe("Prefetch integration", () => {
     await waitForIdle(router);
 
     // Simulate hover: prefetch triggers loader
-    await router.prefetch("/target");
+    await router.prefetch("/target" as NavigateTo);
     expect(loader).toHaveBeenCalledTimes(1);
 
     // Simulate click: navigate finds cached promise, skips loader
-    router.navigate("/target");
+    router.navigate("/target" as NavigateTo);
     await waitForIdle(router);
 
     expect(loader).toHaveBeenCalledTimes(1);
@@ -549,7 +550,7 @@ describe("Prefetch integration", () => {
     await waitForIdle(router);
 
     // No prefetch - navigate runs loader directly
-    router.navigate("/direct");
+    router.navigate("/direct" as NavigateTo);
     await waitForIdle(router);
 
     expect(loader).toHaveBeenCalledTimes(1);
@@ -576,10 +577,10 @@ describe("Prefetch integration", () => {
     await waitForIdle(router);
 
     // Hover prefetch fails - error lands on match, promise still resolves
-    await router.prefetch("/retry");
+    await router.prefetch("/retry" as NavigateTo);
 
     // Navigate consumes the cached result - error is visible on state
-    router.navigate("/retry");
+    router.navigate("/retry" as NavigateTo);
     await waitForIdle(router);
 
     let state = router.getState();
@@ -591,7 +592,7 @@ describe("Prefetch integration", () => {
     shouldFail = false;
     router.navigate("/");
     await waitForIdle(router);
-    router.navigate("/retry");
+    router.navigate("/retry" as NavigateTo);
     await waitForIdle(router);
 
     state = router.getState();
@@ -617,7 +618,7 @@ describe("Search params", () => {
 
     // Mock navigate with search params
     mockPathname = "/search?foo=bar&baz=qux";
-    router.navigate("/search?foo=bar&baz=qux");
+    router.navigate("/search?foo=bar&baz=qux" as NavigateTo);
     await waitForIdle(router);
 
     expect(loader).toHaveBeenCalledWith(
@@ -666,7 +667,7 @@ describe("Search params", () => {
     await waitForIdle(router);
 
     mockPathname = "/paged?page=5";
-    router.navigate("/paged?page=5");
+    router.navigate("/paged?page=5" as NavigateTo);
     await waitForIdle(router);
 
     expect(validateSearch).toHaveBeenCalledWith({ page: "5" });
@@ -690,7 +691,7 @@ describe("Search params", () => {
     await waitForIdle(router);
 
     mockPathname = "/strict?page=abc";
-    router.navigate("/strict?page=abc");
+    router.navigate("/strict?page=abc" as NavigateTo);
     await waitForIdle(router);
 
     const state = router.getState();
@@ -716,7 +717,7 @@ describe("Search params", () => {
     await waitForIdle(router);
 
     mockPathname = "/inspect?color=blue&size=10";
-    router.navigate("/inspect?color=blue&size=10");
+    router.navigate("/inspect?color=blue&size=10" as NavigateTo);
     await waitForIdle(router);
 
     const state = router.getState();
@@ -739,11 +740,11 @@ describe("Search params", () => {
     await waitForIdle(router);
 
     mockPathname = "/stable?q=hello";
-    router.navigate("/stable?q=hello");
+    router.navigate("/stable?q=hello" as NavigateTo);
     await waitForIdle(router);
     expect(loader).toHaveBeenCalledTimes(1);
 
-    router.navigate("/stable?q=hello");
+    router.navigate("/stable?q=hello" as NavigateTo);
     await waitForIdle(router);
     expect(loader).toHaveBeenCalledTimes(1);
   });
@@ -762,11 +763,11 @@ describe("Search params", () => {
     await waitForIdle(router);
 
     // First navigation: set color=blue via options.search
-    router.navigate("/dash", { search: { color: "blue" } });
+    router.navigate("/dash" as NavigateTo, { search: { color: "blue" } });
     await waitForIdle(router);
 
     // Second navigation: set size=10 - color should persist (merge mode)
-    router.navigate("/dash", { search: { size: "10" } });
+    router.navigate("/dash" as NavigateTo, { search: { size: "10" } });
     await waitForIdle(router);
 
     const state = router.getState();
@@ -788,11 +789,11 @@ describe("Search params", () => {
     await waitForIdle(router);
 
     // First navigation: set color=blue
-    router.navigate("/dash", { search: { color: "blue" } });
+    router.navigate("/dash" as NavigateTo, { search: { color: "blue" } });
     await waitForIdle(router);
 
     // Second navigation with replace mode: only size=10 - color should be gone
-    router.navigate("/dash", { search: { size: "10" }, searchMode: "replace" });
+    router.navigate("/dash" as NavigateTo, { search: { size: "10" }, searchMode: "replace" });
     await waitForIdle(router);
 
     const state = router.getState();
@@ -814,11 +815,11 @@ describe("Search params", () => {
     await waitForIdle(router);
 
     // Set page=1
-    router.navigate("/counter", { search: { page: "1" } });
+    router.navigate("/counter" as NavigateTo, { search: { page: "1" } });
     await waitForIdle(router);
 
     // Use function form to increment page
-    router.navigate("/counter", {
+    router.navigate("/counter" as NavigateTo, {
       search: (prev: Record<string, string>) => ({
         ...prev,
         page: String(Number(prev["page"]) + 1),
@@ -845,7 +846,7 @@ describe("Search params", () => {
     await waitForIdle(router);
 
     // Set page and filter
-    router.navigate("/items", { search: { page: "1", filter: "shoes" } });
+    router.navigate("/items" as NavigateTo, { search: { page: "1", filter: "shoes" } });
     await waitForIdle(router);
     expect(router.getState().matches.find((m) => m.routeId === "/items")!.rawSearch).toEqual({
       page: "1",
@@ -853,7 +854,7 @@ describe("Search params", () => {
     });
 
     // Remove filter via undefined
-    router.navigate("/items", {
+    router.navigate("/items" as NavigateTo, {
       search: (prev: Record<string, string>) => ({ ...prev, filter: undefined }),
     });
     await waitForIdle(router);
@@ -876,7 +877,7 @@ describe("Search params", () => {
     const router = new Router(routesWithLoader);
     await waitForIdle(router);
 
-    router.navigate("/search", {
+    router.navigate("/search" as NavigateTo, {
       search: { page: "2", sort: "date", filter: "active" },
     });
     await waitForIdle(router);
@@ -899,7 +900,7 @@ describe("Search params", () => {
     await waitForIdle(router);
 
     // to has ?page=1 embedded, search option adds sort=date
-    router.navigate("/mixed?page=1", { search: { sort: "date" } });
+    router.navigate("/mixed?page=1" as NavigateTo, { search: { sort: "date" } });
     await waitForIdle(router);
 
     const match = router.getState().matches.find((m) => m.routeId === "/mixed");

@@ -12,6 +12,7 @@ import {
   useLoaderData,
   useRouteError,
 } from "./react";
+import type { NavigateTo } from "./typed";
 
 let mockPathname = "/";
 
@@ -282,7 +283,7 @@ describe("Link props forwarding", () => {
       {
         path: "__root",
         component: () => (
-          <Link to="/test" style={{ color: "red" }}>
+          <Link to={"/test" as NavigateTo} style={{ color: "red" }}>
             styled link
           </Link>
         ),
@@ -301,7 +302,7 @@ describe("Link props forwarding", () => {
       {
         path: "__root",
         component: () => (
-          <Link to="/test" className="my-link">
+          <Link to={"/test" as NavigateTo} className="my-link">
             classed link
           </Link>
         ),
@@ -347,7 +348,7 @@ describe("Link prefetch", () => {
       {
         path: "__root",
         component: () => (
-          <Link to="/prefetch" prefetch="intent">
+          <Link to={"/prefetch" as NavigateTo} prefetch="intent">
             hover me
           </Link>
         ),
@@ -379,7 +380,7 @@ describe("Link prefetch", () => {
       {
         path: "__root",
         component: () => (
-          <Link to="/prefetch" prefetch="none">
+          <Link to={"/prefetch" as NavigateTo} prefetch="none">
             no prefetch
           </Link>
         ),
@@ -408,7 +409,7 @@ describe("Link prefetch", () => {
       {
         path: "__root",
         component: () => (
-          <Link to="/prefetch" prefetch="intent">
+          <Link to={"/prefetch" as NavigateTo} prefetch="intent">
             hover me
           </Link>
         ),
@@ -438,7 +439,7 @@ describe("Link prefetch", () => {
       {
         path: "__root",
         component: () => (
-          <Link to="/prefetch" prefetch="intent" prefetchDelay={200}>
+          <Link to={"/prefetch" as NavigateTo} prefetch="intent" prefetchDelay={200}>
             slow hover
           </Link>
         ),
@@ -476,7 +477,7 @@ describe("Link prefetch", () => {
         path: "__root",
         component: () => (
           <Link
-            to="/test"
+            to={"/test" as NavigateTo}
             prefetch="intent"
             onMouseEnter={onMouseEnter}
             onMouseLeave={onMouseLeave}

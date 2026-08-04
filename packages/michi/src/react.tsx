@@ -14,6 +14,8 @@ import { Loading } from "./components/loading";
 import { NotFound } from "./components/not-found";
 import { RouteError as DefaultRouteError } from "./components/route-error";
 import type { RouteMatch, RouterState } from "./types";
+import type { RegisteredRoutes, NavigateTo } from "./typed";
+import { isExternalPath } from "./router";
 import type { Router } from "./router";
 
 const DEFAULT_PREFETCH_DELAY_MS = 50;
@@ -80,6 +82,18 @@ export function useSearch<T = unknown>(): T {
 export function useRouteError(): unknown {
   const error = useContext(RouteErrorContext);
   return error === NO_ERROR ? undefined : error;
+}
+
+// Type-level pin: useParams/useSearch/useLoaderData for a specific route path.
+export function defineRoute<Path extends keyof RegisteredRoutes>(_path: Path) {
+  return {
+    useParams: (): RegisteredRoutes[Path]["params"] =>
+      useParams<RegisteredRoutes[Path]["params"] & Record<string, string>>(),
+    useSearch: (): RegisteredRoutes[Path]["search"] =>
+      useSearch<RegisteredRoutes[Path]["search"]>(),
+    useLoaderData: (): RegisteredRoutes[Path]["loaderData"] =>
+      useLoaderData<RegisteredRoutes[Path]["loaderData"]>(),
+  };
 }
 
 function matchKey(match: RouteMatch): string {
@@ -191,7 +205,7 @@ export function Outlet({ fallback = <NotFound /> }: { fallback?: React.ReactNode
 }
 
 export type LinkProps = {
-  to: string;
+  to: NavigateTo;
   children: React.ReactNode;
   prefetch?: "intent" | "none";
   prefetchDelay?: number;
@@ -216,7 +230,7 @@ export const Link = React.forwardRef<HTMLAnchorElement, LinkProps>(function Link
       href={to}
       {...rest}
       onMouseEnter={(e) => {
-        if (prefetch === "intent") {
+        if (prefetch === "intent" && !isExternalPath(to)) {
           hoverTimer.current = setTimeout(() => {
             router.prefetch(to);
           }, prefetchDelay);
@@ -231,6 +245,15 @@ export const Link = React.forwardRef<HTMLAnchorElement, LinkProps>(function Link
         rest.onMouseLeave?.(e);
       }}
       onClick={(e) => {
+        if (isExternalPath(to)) {
+          // let the browser handle it natively - no preventDefault, no
+          // router.navigate. target="_blank", rel, referrerPolicy etc. all
+          // already reach the real <a> via {...rest} above; pushState-ing a
+          // cross-origin URL would throw a SecurityError, so this path must
+          // never call router.navigate() at all.
+          rest.onClick?.(e);
+          return;
+        }
         e.preventDefault();
         router.navigate(to);
         rest.onClick?.(e);

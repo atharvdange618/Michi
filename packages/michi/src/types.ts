@@ -46,3 +46,10 @@ export type NavigateOptions = {
   search?: Record<string, unknown> | ((prev: Record<string, string>) => Record<string, unknown>);
   searchMode?: "merge" | "replace"; // default: "merge"
 };
+
+// Empty on purpose. A consuming app's generated routeTree.gen.ts augments this
+// via declaration merging (`declare module "michi" { interface RouteRegistry { routes: ... } }`)
+// so the package can reference the app's route types without ever importing the app's code.
+// Until that augmentation runs, `RouteRegistry["routes"]` resolves to `never`/`{}` - see typed.ts
+// for how consumers of this fall back safely when the package compiles standalone.
+export interface RouteRegistry {}

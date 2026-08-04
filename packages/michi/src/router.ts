@@ -16,6 +16,11 @@ import {
   serializeSearchParams,
   type SearchValidators,
 } from "./search-params";
+import type { NavigateTo } from "./typed";
+
+export function isExternalPath(to: string): boolean {
+  return to.startsWith("http");
+}
 
 export class Router {
   private history: History;
@@ -166,12 +171,12 @@ export class Router {
     this.notify();
   }
 
-  navigate(to: string, options?: NavigateOptions): void {
+  navigate(to: NavigateTo, options?: NavigateOptions): void {
     if (!to || typeof to !== "string") {
       console.warn("router.navigate() requires a non-empty string path");
       return;
     }
-    if (!to.startsWith("/") && !to.startsWith("http")) {
+    if (!to.startsWith("/") && !isExternalPath(to)) {
       console.warn(`router.navigate("${to}") - paths should start with "/"`);
       return;
     }
