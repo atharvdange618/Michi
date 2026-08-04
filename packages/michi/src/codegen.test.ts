@@ -201,7 +201,27 @@ export const validateSearch = (raw: Record<string, string>) => raw;`,
     expect(output).toMatch(
       /import Users, \{ loader as UsersLoader, validateSearch as UsersValidateSearch \} from/,
     );
-    expect(output).toContain("export const routeTree: RouteDefinition[]");
+    expect(output).toContain("export const routeTree = [");
+    expect(output).toContain("as const satisfies RouteDefinition[];");
+  });
+
+  it("emits the RouteInfoOf type and RouteRegistry declaration merging block", () => {
+    tmp = makeTmpDir();
+    const routesDir = mkdirFixture(tmp, "routes");
+    const outDir = mkdirFixture(tmp, "src");
+    const outFile = path.join(outDir, "routeTree.gen.ts");
+
+    writeFixture(routesDir, "__root.tsx", "export default function Root() {}");
+    writeFixture(routesDir, "about.tsx", "export default function About() {}");
+
+    writeRouteTreeFile(routesDir, outFile);
+
+    const output = fs.readFileSync(outFile, "utf-8");
+    expect(output).toContain('import type { RouteDefinition, RouteInfoOf } from "michi";');
+    expect(output).toContain("type GeneratedRouteInfo = RouteInfoOf<typeof routeTree>;");
+    expect(output).toContain('declare module "michi" {');
+    expect(output).toContain("interface RouteRegistry {");
+    expect(output).toContain("routes: GeneratedRouteInfo;");
   });
 
   it("throws on import alias collision from different files", () => {

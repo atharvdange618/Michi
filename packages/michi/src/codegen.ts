@@ -335,10 +335,29 @@ export function writeRouteTreeFile(routesDir: string, outFile: string): void {
   const output = `// GENERATED FILE - DO NOT EDIT
 // Run \`pnpm codegen\` to regenerate from ${path.relative(process.cwd(), routesDir)}
 
-import type { RouteDefinition } from "michi";
+import type { RouteDefinition, RouteInfoOf } from "michi";
 ${importLines}
 
-export const routeTree: RouteDefinition[] = [${treeSource}];
+// "as const satisfies" instead of a ": RouteDefinition[]" annotation - the annotation
+// would widen every literal (path strings, loader/validateSearch return types) down to
+// RouteDefinition's own loose signatures before TypeScript ever gets to see them. "as const"
+// is what actually preserves those literals through the whole nested children tree;
+// "satisfies" checks the shape against RouteDefinition without discarding what "as const"
+// preserved, the way a ":" annotation would.
+export const routeTree = [${treeSource}] as const satisfies RouteDefinition[];
+
+// Powers Slice 9's typed routes: path -> { params, search, loaderData } for every
+// navigable route, derived once here from the same tree the runtime router reads.
+type GeneratedRouteInfo = RouteInfoOf<typeof routeTree>;
+
+// Declaration merging, not a real export - lets "michi"'s hooks (defineRoute,
+// navigate(), <Link to>) resolve this app's specific route types without the
+// package ever importing this file. See RouteRegistry in michi's types.ts.
+declare module "michi" {
+  interface RouteRegistry {
+    routes: GeneratedRouteInfo;
+  }
+}
 `;
 
   fs.mkdirSync(outDir, { recursive: true });
