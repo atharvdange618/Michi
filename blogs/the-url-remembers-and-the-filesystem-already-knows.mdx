@@ -418,7 +418,7 @@ The mental model people often bring to file-based routing - that a framework is 
 
 ## The Generated File Is a Source of Truth, Half of It
 
-Worth being precise about what's true right now versus what Slice 9 still owns. `routeTree` today is typed as `RouteDefinition[]` - real type-checking, but a broad one. TypeScript doesn't yet know `/user/$id` specifically exists as a valid literal path, or that navigating there specifically requires an `id` param. That's explicitly Slice 9's job, not built yet.
+Worth being precise about what's true right now versus what Slice 9 now delivers. `routeTree` today is typed via declaration merging - TypeScript knows exactly which routes exist as valid literal paths, and that navigating to `/user/$id` requires an `id` param. Slice 9 turned the broad `RouteDefinition[]` type into a precise union of registered routes.
 
 What's already true: there's exactly one input - the directory - and everything downstream gets mechanically extracted from that same input in the same script run. Compare that to hand-typing a `type ValidPaths = "/user/$id" | "/about" | ...` union alongside a hand-written array, with nothing enforcing the two stay in sync. Add a route, forget the type, and the type system confidently lies. Codegen removes the possibility of that drift, because there's nothing left to drift _from_ - one directory, one script, one output.
 
