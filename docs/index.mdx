@@ -27,7 +27,7 @@ Every feature is built as a **slice** -- a self-contained, demonstrable mileston
 | 6     | <Badge variant="success">Done</Badge> | **Prefetch on Hover** - running loaders early                              |
 | 7     | <Badge variant="success">Done</Badge> | **Search Params** - typed, serializable URL state                          |
 | 8     | <Badge variant="success">Done</Badge> | **File-Based Routing** - codegen from filesystem                           |
-| 9     | <Badge>Planned</Badge> | **Typed Routes** - compile-time path and param safety                      |
+| 9     | <Badge variant="success">Done</Badge> | **Typed Routes** - compile-time path and param safety                      |
 | 10    | <Badge>Planned</Badge> | **Route Ranking** - why `/users/new` beats `/users/$id`                    |
 | 11    | <Badge>Planned</Badge> | **Navigation Lifecycle** - `beforeLeave`, `afterNavigate` hooks            |
 | 12    | <Badge>Planned</Badge> | **Structural Sharing** - granular subscriptions, skip re-renders           |
@@ -45,7 +45,7 @@ Every feature is built as a **slice** -- a self-contained, demonstrable mileston
 
 ## What's done
 
-Slices 1 through 8 are built and working. The router supports:
+Slices 1 through 9 are built and working. The router supports:
 
 - **Dynamic params** -- `/user/$id` matches `/user/atharv` and extracts `{ id: "atharv" }`
 - **Wildcard routes** -- `/files/*` matches `/files/public/uploads/report.pdf`
@@ -65,6 +65,10 @@ Slices 1 through 8 are built and working. The router supports:
 - **Search param navigation** -- merge or replace params with `navigate(path, { search })`
 - **File-based routing** -- codegen from filesystem via AST inspection
 - **Route tree generation** -- `routeTree.gen.ts` generated from folder structure
+- **Typed route paths** -- `defineRoute` for compile-time path checking
+- **Compile-time path validation** -- invalid paths to `navigate()` and `<Link to>` are TypeScript errors
+- **Typed params and search params** -- inferred from the route tree at compile time
+- **RouteRegistry** -- declaration merging bridges the package types with your app's route tree
 
 ## Explore the docs
 
