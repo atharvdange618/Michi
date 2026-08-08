@@ -75,6 +75,37 @@ type LoaderContext<
 };
 ```
 
+### `NavigateTo`
+
+The typed path union. Constructed from the route tree via `codegen.ts`. Passes type-checking only if the path is a valid registered route with the correct params.
+
+```ts
+type NavigateTo = RegisteredRoutes | TypedPath<"/about"> | ...;
+```
+
+### `defineRoute`
+
+Compile-time route definition helper. Returns a `RouteDefinition` with typed path info that codegen picks up.
+
+```ts
+const route = defineRoute({
+  path: "/user/$id",
+  component: UserPage,
+});
+```
+
+### `RouteRegistry`
+
+Declaration merging interface. Your app augments this in `routeTree.gen.ts` to bridge the package types with your specific route tree.
+
+```ts
+declare module "michi" {
+  interface RouteRegistry {
+    routes: [typeof route1, typeof route2, ...];
+  }
+}
+```
+
 ## Classes
 
 ### `Router`
@@ -82,8 +113,8 @@ type LoaderContext<
 ```ts
 class Router {
   constructor(routes: RouteDefinition[], options?: RouterOptions);
-  navigate(to: string, options?: NavigateOptions): void;
-  prefetch(to: string): Promise<RouteMatch[]>;
+  navigate(to: NavigateTo, options?: NavigateOptions): void;
+  prefetch(to: NavigateTo): Promise<RouteMatch[]>;
   getState(): RouterState;
   subscribe(callback: () => void): () => void;
 }
@@ -138,7 +169,7 @@ type NavigateOptions = {
 
 | Prop            | Type                 | Description                                              |
 | --------------- | -------------------- | -------------------------------------------------------- |
-| `to`            | `string`             | The destination URL                                      |
+| `to`            | `NavigateTo`         | The destination URL (typed path from route tree)         |
 | `prefetch`      | `"intent" \| "none"` | When to prefetch the route's loaders (default: `"none"`) |
 | `prefetchDelay` | `number`             | Debounce delay in ms for intent prefetch (default: `50`) |
 | `children`      | `ReactNode`          | Link content                                             |
