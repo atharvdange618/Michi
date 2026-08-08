@@ -44,6 +44,7 @@ It is a one-way chain. Nothing in this loop talks back up. History does not know
 | `search-params.ts` | `parseSearchParams`, `serializeSearchParams`, `applySearch` for typed URL search state                          |
 | `prefetch.ts` | TTL-based prefetch cache with deduplication                                                                     |
 | `codegen.ts` | AST-based route tree generation from filesystem                                                                   |
+| `typed.ts` | Compile-time typed routes: `NavigateTo`, `defineRoute`, `ParsePathParams`, `RouteInfoOf`, `TypedPath`                  |
 | `react.tsx`  | React bindings: `RouterProvider`, `Link`, `Outlet`, hooks (`useRouter`, `useParams`, `useLoaderData`, `useRouteError`, `useSearch`) |
 
 <FileTree>
@@ -57,6 +58,7 @@ It is a one-way chain. Nothing in this loop talks back up. History does not know
       - loader.ts
       - search-params.ts
       - prefetch.ts
+      - typed.ts
       - codegen.ts
       - react.tsx
       - components/
@@ -122,5 +124,8 @@ Michi uses `useSyncExternalStore` (not `useState`) to subscribe to the Router's 
   </Card>
   <Card title="File-Based Routing" href="/features/file-based-routing" icon="folder-tree">
     Codegen from filesystem via AST inspection.
+  </Card>
+  <Card title="Typed Routes" href="/features/typed-routes" icon="shield-check">
+    Compile-time path and param safety via declaration merging.
   </Card>
 </CardGroup>
