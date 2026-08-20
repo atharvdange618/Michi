@@ -17,7 +17,7 @@ description: "I'm building a client-side router from scratch to understand what 
 summary: "I built a client-side router from scratch to understand TanStack and React Router internals. The History API changes URLs without page reloads. Route patterns get compiled into regex for matching. useState breaks in concurrent mode because it can tear across renders. useSyncExternalStore is the hook that solves this by subscribing to the router's external state and guaranteeing consistency."
 ---
 
-I've used React Router and TanStack Router in production for last 1-2 years. They work great. But I never really understood _how_ they work. The internals underneath all of it. What happens between the click and the render. How does the URL change without a reload. How does a pattern like `/user/$id` turn into something that actually matches `/user/atharv`. What keeps two components from seeing different URLs in the same render pass.
+I've used React Router and TanStack Router in production for the last 1-2 years. They work great. But I never really understood _how_ they work. The internals underneath all of it. What happens between the click and the render. How does the URL change without a reload. How does a pattern like `/user/$id` turn into something that actually matches `/user/atharv`. What keeps two components from seeing different URLs in the same render pass.
 
 So I started building one. [Michi](https://github.com/atharvdange618/Michi) is a client-side router from scratch - same spirit as React Router and TanStack Router, but stripped down to the essentials. TypeScript, the browser's History API, and React's `useSyncExternalStore`. No magic, no abstraction hiding. Just enough code that every line has a reason.
 
