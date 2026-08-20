@@ -36,6 +36,12 @@ describe("matchRoute", () => {
     expect(first).toEqual({ id: "alice" });
     expect(second).toEqual({ id: "bob" });
   });
+
+  it("treats a malformed percent-encoded param as no match instead of throwing", () => {
+    expect(() => matchRoute("/user/$id", "/user/%")).not.toThrow();
+    expect(matchRoute("/user/$id", "/user/%")).toBeNull();
+    expect(matchRoute("/user/$id", "/user/%E0%A4%A")).toBeNull();
+  });
 });
 
 describe("matchTree", () => {
@@ -287,5 +293,24 @@ describe("matchTree", () => {
     expect(matches).toHaveLength(2);
     expect(matches[0]!.routeId).toBe("__root");
     expect(matches[1]!.routeId).toBe("/settings");
+  });
+
+  it("does not crash the whole tree walk on a malformed percent-encoded segment", () => {
+    const Root = () => null;
+    const User = () => null;
+
+    const routes: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: Root,
+        children: [{ path: "/user/$id", component: User }],
+      },
+    ];
+
+    expect(() => matchTree(routes, "/user/%")).not.toThrow();
+    // falls through to "no match" for the leaf, same as any other unmatched path
+    const matches = matchTree(routes, "/user/%");
+    expect(matches).toHaveLength(1);
+    expect(matches[0]!.routeId).toBe("__root");
   });
 });
