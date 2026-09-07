@@ -108,6 +108,7 @@ Every slice has a corresponding deep-dive article explaining both the implementa
 - [Layouts That Persist and Data That Arrives Before You Do](https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do) Slices 3-4: Nested Routes + Data Loaders
 - [Per-Route Error Boundaries and Prefetch on Hover](https://tty.atharvdangedev.in/blog/per-route-error-boundaries-and-prefetch-on-hover) Slices 5-6: Error Boundaries and Prefetch on Hover
 - [The URL Remembers, and the Filesystem Already Knows](https://tty.atharvdangedev.in/blog/the-url-remembers-and-the-filesystem-already-knows) Slices 7-8: Search Params + File-Based Codegen
+- [The Types Know Your Routes, and the Matcher Knows Which Wins](https://tty.atharvdangedev.in/blog/the-types-know-your-routes-and-the-matcher-knows-which-wins) Slices 9-10: Typed Routes + Route Ranking
 
 The goal isn't just to explain how Michi works. It's to explain why modern routers were designed this way in the first place.
 

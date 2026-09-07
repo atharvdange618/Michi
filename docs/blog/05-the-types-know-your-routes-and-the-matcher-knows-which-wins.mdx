@@ -1,0 +1,356 @@
+---
+title: "The Types Know Your Routes, and the Matcher Knows Which Wins"
+type: blog
+date: 2026-09-07
+authors: "Atharv Dange"
+description: "Two slices that teach the rest of the system to read the route tree slice 8 turned into the single source of truth. Slice 9 makes the type system check every path and param at compile time. Slice 10 replaces order-dependent first-match matching with a specificity score, so the right route wins no matter how the tree is written."
+---
+
+The [previous post](/blog/the-url-remembers-and-the-filesystem-already-knows) ended with the route tree becoming a real source of truth. Slice 8's codegen reads the routes folder and writes `routeTree.gen.ts`: one directory in, one array out, nothing to keep in sync by hand. This post is about teaching the rest of the router to read that array properly.
+
+Slice 9 hands it to the type system. Before this slice, `navigate("/user/$id")` was just a string, and a typo like `navigate("/uesr/$id")` compiled fine and failed at runtime. Slice 9 turns the generated tree into a union of every valid path, so the compiler rejects the typo and knows that `/user/$id` needs an `id`.
+
+Slice 10 hands it to the matcher. Before this slice, which route won a URL depended on the order you wrote them in. Put `/user/$id` before `/user/settings` and `settings` got captured as an id. Slice 10 gives every route a specificity score and sorts each group before matching, so the order you write routes in stops mattering.
+
+Same input, `routeTree`. Slice 9 reads it once during type checking and then vanishes; slice 10 reads it on every navigation.
+
+## Types That Vanish Before Runtime
+
+Every slice before this one wrote code that runs. `matchTree` runs when a URL changes. `runLoaders` runs when a navigation commits. `codegen` runs when you type `pnpm codegen`. Slice 9 is different in a way that's easy to miss: it writes code TypeScript reads and never runs. Types get erased before a single line of the app executes. There is no `typedMatchTree` sitting in the bundle doing work at 2am. The instant `tsc` finishes, everything this slice built is gone.
+
+That constraint shapes the rest. Since types don't exist at runtime, the only thing they can ever be derived from is other types, resolved entirely at compile time. For Michi that means one specific thing: `typeof routeTree`, the literal shape of the array `routeTree.gen.ts` passes into `new Router(...)`. Everything in this slice is downstream of getting that one type as precise as possible, then walking it.
+
+## The Annotation That Threw Away the Answer
+
+`routeTree.gen.ts` first declared its export like this:
+
+```ts
+export const routeTree: RouteDefinition[] = [ ... ];
+```
+
+That `: RouteDefinition[]` annotation widens every literal in the array down to `RouteDefinition`'s own loose shape. `path: "/user/$id"` becomes `path: string`. A loader's specific return type becomes `Promise<unknown>`. Once that happens there is nothing left for a type-level walk to extract.
+
+The fix took two things working together, not one:
+
+```ts
+export const routeTree = [ ... ] as const satisfies RouteDefinition[];
+```
+
+`as const` recursively preserves literal types through the whole nested `children` tree. `satisfies` then checks the shape against `RouteDefinition` without discarding what `as const` just preserved, the way a `:` annotation would. Checked against the real compiler before building anything on top: `satisfies` alone, without `as const`, still widens a plain `const`'s literals during inference. There is no naturally narrow type for `satisfies` to preserve if `as const` never narrowed it first.
+
+<Callout type="info">
+  **`satisfies` checks, it doesn't narrow.** `satisfies T` verifies a value is
+  assignable to `T` and then leaves the value's own inferred type alone. If that
+  inferred type was already widened (a plain array literal infers `string[]`,
+  not a tuple of literals), `satisfies` has nothing narrow to keep. `as const`
+  is what does the narrowing; `satisfies` is what stops a later annotation from
+  undoing it while still type-checking the shape.
+</Callout>
+
+## A Package That Can't Import Its Consumer
+
+`defineRoute("/user/$id")` needs to know your app's specific route shapes. But it lives inside the `michi` package, which has never heard of your app and never will. A reusable router package importing one specific consumer's generated file would be backwards.
+
+`Router` can't carry the information down either. `createContext<Router | null>` isn't generic per call site, so every hook that reads that context sees the same context type no matter where it's called. There's no clean way to thread a `TRoutes` generic from `new Router(routeTree)` down to `useLoaderData()` three components later.
+
+Declaration merging sidesteps the whole problem. An `interface` declared in one file can be reopened from a completely different file, as long as both resolve to the same module. `types.ts` starts it empty:
+
+```ts
+export interface RouteRegistry {}
+```
+
+The generated `routeTree.gen.ts` reopens it:
+
+```ts
+declare module "michi" {
+  interface RouteRegistry {
+    routes: GeneratedRouteInfo;
+  }
+}
+```
+
+```ascii
+No import crosses this line
+
+michi package                         your app
+-----------                           --------
+types.ts                              routeTree.gen.ts
+  interface RouteRegistry {}            declare module "michi" {
+                                          interface RouteRegistry {
+         \                                  routes: GeneratedRouteInfo
+          \                               }
+           \                            }
+            \                          /
+             v                        v
+        TypeScript merges both declarations into one,
+        because both name the same interface in the same module
+
+main.tsx already imports routeTree to build the router,
+so the generated file is in the program, so the merge happens
+```
+
+Nothing imports anything across that gap. The `michi` package never sees your app's code. Your generated file never imports the package's internals beyond its public types. TypeScript merges the two `interface RouteRegistry` declarations because both blocks say they describe the same interface in the same module. Once `main.tsx` imports `routeTree` from `./routeTree.gen` (which it already does, to build the router), that file is part of the compilation, the merge happens, and every package type that reads `RouteRegistry["routes"]` resolves against your real routes.
+
+One catch the merge creates: before any app's generated file exists, `RouteRegistry` really is just `{}`. Indexing `["routes"]` on an empty interface isn't a soft "nothing registered yet," it's a hard compile error. Every type built on `RouteRegistry` needs its own explicit fallback for the standalone case, or the package couldn't compile on its own at all.
+
+## One Walk Over the Tree, at the Type Level
+
+`typed.ts` is `codegen.ts`'s mirror image. Codegen reads a route tree off the filesystem with `fs.readdirSync` and writes text. `typed.ts` reads a route tree _type_, `typeof routeTree`, and writes types. Same "walk a tree, produce output" shape as `matchTree`, one level up, running at compile time instead of runtime. Nothing in the file is a value.
+
+`FlattenRoutes` is the one recursive walk everything else is built on:
+
+```ts
+type FlattenRoutes<Tree extends readonly AnyRouteNode[]> = Tree extends readonly [
+  infer Head extends AnyRouteNode,
+  ...infer Tail extends readonly AnyRouteNode[],
+]
+  ?
+      | (IsLayoutPath<Head["path"]> extends true
+          ? never
+          : {
+              path: Head["path"];
+              params: ParsePathParams<Head["path"]>;
+              search: Head extends { validateSearch: (raw: any) => infer S }
+                ? S
+                : Record<string, string>;
+              loaderData: Head extends { loader: (ctx: any) => Promise<infer D> }
+                ? D
+                : undefined;
+            })
+      | (Head extends { children: infer C extends readonly AnyRouteNode[] }
+          ? FlattenRoutes<C>
+          : never)
+      | FlattenRoutes<Tail>
+  : never;
+```
+
+Three things get unioned at every node. The node's own entry, but only if it isn't a layout route, since you can never `navigate("__root")` and the type shouldn't pretend you can. That is the exact rule `matchTree` applies at runtime, written once more here so the two can't drift. Then the walk into `children`, and separately the walk into `Tail`, the rest of the array at this level. All three land in one flat union. A tree of arbitrarily nested `children` becomes one flat set of "every navigable route anywhere."
+
+The `search` and `loaderData` fallbacks aren't arbitrary defaults. Each was checked against the runtime behavior it describes. No `validateSearch` means `applySearch` (Slice 7) passes the raw search object straight through, so the type falls back to `Record<string, string>`, not `unknown`. No `loader` means `RouteMatch.loaderData` stays whatever `matcher.ts` initializes it to, which is `undefined`, so the type falls back to `undefined`. Getting either wrong wouldn't be a compile error anywhere. It would be a type that quietly lies about what a component receives, which is worse, because nothing flags it.
+
+`PathsOf` is one property access on that union. `RouteInfoOf` remaps it into a `path -> { params, search, loaderData }` table with a mapped type's `as` clause. Both come from the single walk, not two.
+
+## The Bug That Every Fixture Missed
+
+The base case of the type-level string splitter is where a real bug lived for a while, and it's a clean example of "compiles, passes every test, still wrong."
+
+```ts
+type Split<S extends string, D extends string> = string extends S
+  ? string[]
+  : S extends ""
+    ? [""]
+    : S extends `${infer Head}${D}${infer Rest}`
+      ? [Head, ...Split<Rest, D>]
+      : [S];
+```
+
+The original version returned `[]` for an empty remaining string, not `[""]`. That looks reasonable. But real `String.prototype.split` doesn't work that way: `"".split("/")` returns `[""]`, one element, not zero.
+
+Every ordinary path is unaffected, because ordinary paths have at least one non-delimiter character somewhere. But the root path, `"/"`, is entirely delimiter. Trace it:
+
+```ascii
+Split<"/", "/">  with the buggy [] base case
+
+"/" matches `${Head}${D}${Rest}`  ->  Head="", Rest=""
+  => ["", ...Split<"", "/">]
+       Split<"", "/">  hits the base case  ->  []   (buggy)
+  => [""]           one element
+
+real "/".split("/")  ->  ["", ""]   two elements
+```
+
+That one missing element seems trivial until it reaches `JoinSegments`, which reconstructs a string from the split pieces. Feed it one segment where there should be two and the root path doesn't round-trip back to `"/"`, it collapses to `""`. Every internal "go home" link in the demo app failed to compile as a direct result. Thirteen hand-written fixture routes across two test files, all passing, none of them happened to include a bare `"/"`. It took running codegen against the actual demo app, which has an index route at `/`, to surface it. Fixed by matching real `.split()` semantics exactly, with a regression test that names the failure so it can't quietly come back.
+
+## defineRoute: Type the Path Once
+
+```ts
+export function defineRoute<Path extends keyof RegisteredRoutes>(_path: Path) {
+  return {
+    useParams: (): RegisteredRoutes[Path]["params"] => useParams(),
+    useSearch: (): RegisteredRoutes[Path]["search"] => useSearch(),
+    useLoaderData: (): RegisteredRoutes[Path]["loaderData"] => useLoaderData(),
+  };
+}
+```
+
+`_path` is a parameter that exists only so TypeScript can infer `Path` from what you literally typed. The value is never read at runtime; the leading underscore says so. Three closures come back, each calling the exact same generic hook every earlier slice already built, with the type argument supplied automatically instead of by hand at every call site.
+
+```ts
+export const Route = defineRoute("/user/$id");
+
+export async function loader({ params }: LoaderContext<{ id: string }>) {
+  return fetchUser(params.id);
+}
+
+export default function UserPage() {
+  const user = Route.useLoaderData(); // User, inferred from loader's return
+  const { id } = Route.useParams();   // { id: string }
+}
+```
+
+The old version called `useLoaderData<User>()`, naming the type at the call site. `Route.useLoaderData()` needs no generic: `RouteInfoOf` already read `loaderData`'s type straight through this exact `loader`'s return type. The `User` import that used to be needed for the generic became unused and had to go, which is a small proof the inference is doing real work. A route file that never imports `defineRoute` behaves exactly as it did before this slice existed.
+
+## What Slice 9 Left Out
+
+The object-form `navigate({ to: "/user/$id", params: { id } })` API from the design spec wasn't built. The string form catches a typo'd or nonexistent path, but it does zero checking on the shape of a param value substituted into a dynamic segment. By the time you've written `"/user/atharv"`, the "this came from a `$id` slot" information is already gone. The object form is what gets real param-shape checking, and it's additive on top of what exists now, not a breaking change. A follow-up, not a bug.
+
+---
+
+## Slice 10: When Two Patterns Fit the Same URL
+
+`matchTree` walks a route list in array order and returns the first branch that matches. That holds right up until two patterns can match the same URL. `/user/$id` matches `/user/settings` fine, with `id` set to `"settings"`.
+
+```ascii
+new Router([
+  { path: "/user/$id",      component: UserPage },
+  { path: "/user/settings", component: SettingsPage },
+])
+
+navigate("/user/settings")
+  -> matchTree tries "/user/$id" first
+  -> "/user/settings" matches it, id = "settings"
+  -> returns UserPage
+  -> SettingsPage never renders
+```
+
+This ambiguity has technically existed since Slice 2, when dynamic params arrived. It never bit anyone because Slice 8's codegen sorts each sibling group static-before-dynamic-before-wildcard before it writes `routeTree.gen.ts`. Two problems with leaning on that. It only runs when you run codegen, so every hand-built tree (all the matcher tests, `main.tsx` before Slice 8) gets nothing. And it's a three-bucket sort with an alphabetical tiebreak, not a real score, so it can't reason about path depth.
+
+## Give Every Route a Number
+
+```ts
+const STATIC_SEGMENT = 10;
+const DYNAMIC_SEGMENT = 3;
+const WILDCARD_SEGMENT = 1;
+
+function scoreRoute(path: string): number {
+  if (isLayoutRoute(path)) return Number.MAX_SAFE_INTEGER;
+
+  return path
+    .split("/")
+    .filter(Boolean)
+    .reduce((score, segment) => {
+      if (segment === "*") return score + WILDCARD_SEGMENT;
+      if (segment.startsWith("$")) return score + DYNAMIC_SEGMENT;
+      return score + STATIC_SEGMENT;
+    }, 0);
+}
+```
+
+Split the path into segments, add points per segment, return the sum. Static segment 10, dynamic `$param` 3, wildcard `*` 1. Higher total means more specific.
+
+Two properties fall straight out of per-segment addition. A static segment always outweighs a dynamic one at the same position, because 10 beats 3 and the rest of the path adds the same on both sides. A deeper path outscores a shallower one, because it has more segments piling onto the total. `/user/settings` scores 20, `/user/$id` scores 13, so `/user/settings` wins the URL they both match.
+
+Layout routes short-circuit to `Number.MAX_SAFE_INTEGER`. `_auth` and `__root` never match a URL on their own, they wrap children, so they have to be tried before any plain sibling or the walk could match a top-level route and skip the layout branch entirely.
+
+The weights come from React Router's `computeRouteMatchScore`, kept in spirit rather than copied. React Router also carries an index-route bonus, an empty-segment value, a base score equal to the segment count, and a negative penalty for splats. Michi drops all of it. The matcher has no index-route concept of its own, `filter(Boolean)` removes empty segments before scoring, and the ordering outcome for every case that matters is identical without the extras.
+
+## One Sort, Every Level
+
+```ts
+export function matchTree(routes: RouteDefinition[], pathname: string): RouteMatch[] {
+  const ranked = [...routes].sort(
+    (a, b) => scoreRoute(b.path) - scoreRoute(a.path),
+  );
+
+  for (const route of ranked) {
+    // ...unchanged body, iterating `ranked`
+  }
+}
+```
+
+`[...routes]` copies before sorting, so the caller's array is never mutated. The sort is descending, most specific first. Because `matchTree` recurses by calling itself on `route.children`, one sort at the entry point covers every level of the tree.
+
+It runs on every navigation, and on every `prefetch` call. Route trees are tens of nodes and the comparator is a split plus a small reduce, so re-sorting each time costs nothing next to running loaders and re-rendering. If a tree ever got large enough to matter, the sort could move into the `Router` constructor and run once, since the scores only depend on path strings and those never change after construction.
+
+`Array.prototype.sort` is stable, so two routes with the same score keep the order you wrote them. React Router has the same tie behavior. The one existing matcher test sensitive to order still passes, because `_auth` scores `Number.MAX_SAFE_INTEGER` and stays first in its group either way.
+
+## Why Not Flatten the Whole Tree
+
+React Router and TanStack Router both flatten the entire route config into one flat list of every matchable path, score each full path, sort the list once, then match a URL against it top to bottom. They flatten because their route paths are relative segments. The same URL can be produced by more than one nesting, so ranking has to compare routes across the whole tree, not just within a group.
+
+Michi stores the absolute path on every node, `/settings/billing`, not `billing`. And `matchTree` only recurses into a child group once the parent is confirmed to be on the path. So the patterns that can compete for a given URL are, in practice, siblings inside one group.
+
+```ascii
+/blog/archive is a sibling of /blog, which owns /blog/$slug
+
+__root > [
+  { path: "/blog",         children: [ { path: "/blog/$slug" } ] },   score 10
+  { path: "/blog/archive" },                                          score 20
+]
+
+navigate("/blog/archive")
+  -> sort puts "/blog/archive" (20) ahead of "/blog" (10)
+  -> "/blog/archive" matches first
+  -> "/blog/$slug" is never reached
+```
+
+Scoring each route by its own absolute path and sorting each group is enough, and the recursion applies it everywhere. Same result if both `/blog/archive` and `/blog/$slug` were children of one `/blog` layout: still a single sibling group, `archive` at 20 ahead of `$slug` at 13.
+
+## The Case Sibling Ranking Still Can't Win
+
+There is a case sibling-level scoring cannot resolve, and it's worth stating plainly rather than pretending the slice is airtight. If a greedy `$param` or `*` lives deep inside a sibling group that gets visited first, it can swallow a URL meant for a more specific route under a later sibling, but only when the earlier group's parent outscored the correct route's parent.
+
+```ascii
+__root > [
+  { path: "/x",  children: [ { path: "/x/$y/$z" } ] },
+  { path: "/$a", children: [ { path: "/$a/b/c"  } ] },
+]
+
+navigate("/foo/b/c")   only "/$a/b/c" can match it
+  -> "/x" (10) sorts before "/$a" (3), tried first
+  -> "/x" subtree has nothing for "/foo/b/c"
+  -> matchTree continues to the next sibling
+  -> "/$a/b/c" matches   (an empty subtree just falls through, no harm)
+```
+
+That example is fine, because "this subtree has no match" simply falls through to the next sibling. The real failure needs a greedy pattern inside the earlier, higher-scored subtree that actively mis-matches a URL intended for a lower-scored sibling's more specific route. It's constructible, but you have to build it on purpose, and no realistic app layout produces it.
+
+<Callout type="warning">
+  **Sibling ranking covers every collision in a normal app, not every collision
+  that can be constructed.** The general fix for the pathological case is
+  full-tree flattening, the same thing React Router does. It's deferred on
+  purpose. If a later slice needs it, `scoreRoute` is already the piece a
+  flattening pass would reuse; nothing here has to be undone to get there.
+</Callout>
+
+## The Old Advice Is Now Wrong
+
+Earlier posts in this series, and the docs for most routers, tell you the same thing: order your routes most-specific-first, or a dynamic route will shadow a static one. Slice 8's post spelled it out with `$id.tsx` shadowing `analytics.tsx`. That advice was correct when it was written.
+
+It isn't correct for Michi anymore. `matchTree` scores routes and sorts each group, so a static route beats a dynamic sibling whether you wrote it first, last, or in the middle. Definition order still settles ties between routes that score the same, which in a sibling group almost never happens, since siblings share a parent prefix and differ only in the segments after it. Codegen still sorts the generated tree, but that's now for the generated file's readability; matching no longer depends on it.
+
+## Key Takeaways
+
+**A type is only as precise as the value it reads.** `RouteInfoOf` can do nothing with `RouteDefinition[]`, because the annotation already widened every literal away. `as const satisfies` is the whole feature: `as const` keeps the literals, `satisfies` checks the shape without throwing them away again.
+
+**Declaration merging lets a package read types it can never import.** `michi` never sees your app. Your generated file never imports `michi`'s internals. Both reopen one `interface RouteRegistry`, TypeScript merges them, and every hook in the package resolves against your real routes.
+
+**Type-level fallbacks have to match runtime behavior exactly.** No `validateSearch` falls back to `Record<string, string>`, not `unknown`, because that's what `applySearch` actually hands you. A fallback that's merely plausible is a type that lies.
+
+**Specificity, not order, should decide which route matches.** A score per route and a stable sort per sibling group means the order you write routes in stops being load-bearing. `/user/settings` beats `/user/$id` no matter where it sits.
+
+**Michi ranks per sibling group because its paths are absolute.** React Router flattens the whole tree because its segments are relative and one URL can come from many nestings. Michi's `matchTree` only enters a branch that's on the path, so collisions are local, and one sort at each level is enough for every real case.
+
+**Correcting old advice is part of shipping a slice.** "Order your routes specific-first" was true for eight slices. Slice 10 made it false, and saying so plainly matters more than leaving the old rule standing in three doc pages.
+
+---
+
+## References
+
+### Michi
+
+- [Michi GitHub Repository](https://github.com/atharvdange618/Michi)
+
+### Typed Routes
+
+- [TypeScript Handbook - Template Literal Types](https://www.typescriptlang.org/docs/handbook/2/template-literal-types.html) - the mechanism behind turning `/user/$id` into `` `/user/${string}` ``
+- [TypeScript 4.9 - the `satisfies` operator](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-4-9.html#the-satisfies-operator) - check the shape without widening the value
+- [TypeScript Handbook - Declaration Merging](https://www.typescriptlang.org/docs/handbook/declaration-merging.html) - reopening an interface from another file
+- [TanStack Router - Type Safety](https://tanstack.com/router/latest/docs/framework/react/guide/type-safety) - the codegen-driven typed-route story this slice draws from
+
+### Route Ranking
+
+- [React Router - `computeRouteMatchScore` (ranking source)](https://github.com/remix-run/react-router/blob/main/packages/react-router/lib/router/utils.ts) - the per-segment scoring these weights are adapted from
+- [TanStack Router - path matching and ranking](https://tanstack.com/router/latest/docs/framework/react/routing/routing-concepts) - how a full-tree flatten resolves ambiguity regardless of definition order
+
+---
