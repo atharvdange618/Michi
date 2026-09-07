@@ -77,7 +77,7 @@ Michi supports three pattern types:
 
 Patterns compile into regex. Each pattern produces a `CompiledPattern` with a regex and an ordered list of parameter names.
 
-Route order matters: first match wins. Always put more specific routes before more general ones.
+Routes are ranked by specificity, not by the order you write them. `matchTree` scores every route (static segment 10, dynamic param 3, wildcard 1) and sorts each sibling group by score before walking it, so `/users/new` wins over `/users/$id` for the URL `/users/new`. Definition order only breaks ties between routes that score the same.
 
 ## The Outlet Pattern
 

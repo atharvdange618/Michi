@@ -28,7 +28,7 @@ Every feature is built as a **slice** -- a self-contained, demonstrable mileston
 | 7     | <Badge variant="success">Done</Badge> | **Search Params** - typed, serializable URL state                          |
 | 8     | <Badge variant="success">Done</Badge> | **File-Based Routing** - codegen from filesystem                           |
 | 9     | <Badge variant="success">Done</Badge> | **Typed Routes** - compile-time path and param safety                      |
-| 10    | <Badge>Planned</Badge> | **Route Ranking** - why `/users/new` beats `/users/$id`                    |
+| 10    | <Badge variant="success">Done</Badge> | **Route Ranking** - why `/users/new` beats `/users/$id`                    |
 | 11    | <Badge>Planned</Badge> | **Navigation Lifecycle** - `beforeLeave`, `afterNavigate` hooks            |
 | 12    | <Badge>Planned</Badge> | **Structural Sharing** - granular subscriptions, skip re-renders           |
 | 13    | <Badge>Planned</Badge> | **View Transitions API** - native browser transitions                      |
@@ -45,7 +45,7 @@ Every feature is built as a **slice** -- a self-contained, demonstrable mileston
 
 ## What's done
 
-Slices 1 through 9 are built and working. The router supports:
+Slices 1 through 10 are built and working. The router supports:
 
 - **Dynamic params** -- `/user/$id` matches `/user/atharv` and extracts `{ id: "atharv" }`
 - **Wildcard routes** -- `/files/*` matches `/files/public/uploads/report.pdf`
@@ -69,6 +69,8 @@ Slices 1 through 9 are built and working. The router supports:
 - **Compile-time path validation** -- invalid paths to `navigate()` and `<Link to>` are TypeScript errors
 - **Typed params and search params** -- inferred from the route tree at compile time
 - **RouteRegistry** -- declaration merging bridges the package types with your app's route tree
+- **Route ranking** -- `/showcase/featured` wins over `/showcase/$id` by score, not by tree order
+- **Specificity scoring** -- static segments outrank dynamic params, which outrank wildcards
 
 ## Explore the docs
 

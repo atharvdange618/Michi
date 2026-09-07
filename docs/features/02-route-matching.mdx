@@ -54,29 +54,34 @@ paramNames.forEach((name, i) => {
 // { id: 'atharv' }
 ```
 
-## Route Order Matters
+## Specificity Ranking
 
-The matching loop tries routes in order and returns the first match:
+Two patterns can match the same URL. `/user/$id` matches `/user/settings` fine, with `id` set to `"settings"`. So which one wins?
 
 ```ts
 new Router([
   { path: "/user/$id", component: UserPage },
-  { path: "/user/settings", component: SettingsPage }, // never reached
+  { path: "/user/settings", component: SettingsPage },
 ]);
 ```
 
-`/user/settings` will never render `SettingsPage`. The `$id` pattern matches it first, captures the string `"settings"` as the id param, and returns.
+Navigating to `/user/settings` renders `SettingsPage`, whichever order the two routes sit in the array. Before it walks the tree, `matchTree` scores every route:
 
-The fix is to always put more specific routes before more general ones:
+```ts matcher.ts
+const STATIC_SEGMENT = 10;
+const DYNAMIC_SEGMENT = 3;
+const WILDCARD_SEGMENT = 1;
 
-```ts
-new Router([
-  { path: "/user/settings", component: SettingsPage }, // checked first
-  { path: "/user/$id", component: UserPage }, // fallback
-]);
+// each segment adds points; higher total = more specific
+// "/user/settings" -> 10 + 10 = 20
+// "/user/$id"      -> 10 + 3  = 13
 ```
 
-This is the same behavior as TanStack Router and React Router. It is not a bug, it is a deliberate trade-off. You get predictable, explicit control over resolution order.
+It sorts each sibling group by score, most specific first, then matches against that order. A static segment always outranks a dynamic param, which always outranks a wildcard. A deeper path outranks a shallower one, since it has more segments to add up. Layout routes (`_auth`, `__root`) sort first, because they wrap children and never match a URL on their own.
+
+Definition order still settles ties. Two routes with the same score keep the order you wrote them, because the sort is stable.
+
+Codegen also sorts the generated route tree by specificity, so `routeTree.gen.ts` lists specific routes above their dynamic siblings. That is a readability pass now, not something matching depends on.
 
 ## The Compiled Pattern Cache
 
@@ -92,7 +97,7 @@ The secondary benefit: `$id` is a valid JavaScript identifier. You can use it as
 
 ## Key Takeaways
 
-- **Route order equals resolution order.** The first matching route wins. Put static routes (`/user/settings`) before dynamic ones (`/user/$id`).
+- **Specificity, not order, decides the match.** `matchTree` scores each route (static 10, dynamic 3, wildcard 1) and the highest score wins. Definition order only breaks ties.
 - **The `^` and `$` anchors matter.** Without them, `/about` matches `/about/extra` as a substring.
 - **One placeholder per segment.** `$id` captures `atharv` from `/user/atharv`. Wildcard `*` captures everything including slashes.
 - **`$` for params, not `:`.** Windows filesystem compatibility. Colons are reserved in Windows paths.

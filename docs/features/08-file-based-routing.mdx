@@ -60,9 +60,9 @@ The walk checks two shapes per export (`export function name() {}` and `export c
 
 ## Specificity Sorting
 
-`fs.readdirSync` returns entries in whatever order the filesystem provides. That's harmless until a static route and a dynamic route become siblings, because `matchTree` is first-match-wins, and `$` sorts before letters in ASCII.
+`fs.readdirSync` returns entries in whatever order the filesystem provides, and `$` sorts before letters in ASCII, so a dynamic route can land above a static sibling. Since Slice 10 the runtime matcher ranks routes by score, so this no longer changes which route matches. Codegen still sorts, so `routeTree.gen.ts` reads with specific routes above their dynamic siblings.
 
-The fix: four tiers checked in order, alphabetical within each tier:
+The sort uses four tiers checked in order, alphabetical within each tier:
 
 ```ts
 function specificityTier(node: RouteNode): number {
