@@ -94,6 +94,12 @@ const features = [
     tag: "Slice 7",
   },
   {
+    title: "Route Ranking",
+    desc: "/showcase/featured beats /showcase/$id by score, not by order",
+    to: "/showcase/featured",
+    tag: "Slice 10",
+  },
+  {
     title: "404 Not Found",
     desc: "Navigate to a route that doesn't match any pattern",
     // deliberately not a registered path - this card demonstrates the 404 page,
@@ -140,9 +146,9 @@ export default function IndexPage() {
             maxWidth: "540px",
           }}
         >
-          Michi is a client-side router built from first principles - the raw History API, regex
-          pattern matching, and React's useSyncExternalStore. No library abstractions. Every line
-          has a reason.
+          Michi is a client-side router built from first principles - the raw
+          History API, regex pattern matching, and React's useSyncExternalStore.
+          No library abstractions. Every line has a reason.
         </p>
       </div>
 
@@ -154,7 +160,8 @@ export default function IndexPage() {
             style={featureCardStyle}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = "var(--accent)";
-              e.currentTarget.style.boxShadow = "0 1px 3px rgba(194, 120, 50, 0.08)";
+              e.currentTarget.style.boxShadow =
+                "0 1px 3px rgba(194, 120, 50, 0.08)";
               e.currentTarget.style.transform = "translateY(-1px)";
             }}
             onMouseLeave={(e) => {
@@ -174,7 +181,9 @@ export default function IndexPage() {
               >
                 {f.title}
               </div>
-              <div style={{ fontSize: "13px", color: "var(--ink-muted)" }}>{f.desc}</div>
+              <div style={{ fontSize: "13px", color: "var(--ink-muted)" }}>
+                {f.desc}
+              </div>
             </div>
             <span style={tagStyle}>{f.tag}</span>
           </Link>

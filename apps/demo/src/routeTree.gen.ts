@@ -9,31 +9,18 @@ import AuthDashboardIndex from "./routes/_auth/dashboard/index";
 import AuthDashboardAnalytics from "./routes/_auth/dashboard/analytics";
 import Index from "./routes/index";
 import About from "./routes/about";
-import ErrorsLoaderFail, {
-  loader as ErrorsLoaderFailLoader,
-  errorComponent as ErrorsLoaderFailErrorComponent,
-} from "./routes/errors/loader-fail";
-import ErrorsRenderFail, {
-  errorComponent as ErrorsRenderFailErrorComponent,
-} from "./routes/errors/render-fail";
+import ErrorsLoaderFail, { loader as ErrorsLoaderFailLoader, errorComponent as ErrorsLoaderFailErrorComponent } from "./routes/errors/loader-fail";
+import ErrorsRenderFail, { errorComponent as ErrorsRenderFailErrorComponent } from "./routes/errors/render-fail";
 import Navigate from "./routes/navigate";
 import Prefetch from "./routes/prefetch";
 import PrefetchDemo, { loader as PrefetchDemoLoader } from "./routes/prefetch-demo";
-import PrefetchFail, {
-  loader as PrefetchFailLoader,
-  errorComponent as PrefetchFailErrorComponent,
-} from "./routes/prefetch-fail";
+import PrefetchFail, { loader as PrefetchFailLoader, errorComponent as PrefetchFailErrorComponent } from "./routes/prefetch-fail";
 import Settings, { loader as SettingsLoader } from "./routes/settings";
 import SettingsBilling from "./routes/settings/billing";
-import SettingsBillingError, {
-  loader as SettingsBillingErrorLoader,
-  errorComponent as SettingsBillingErrorErrorComponent,
-} from "./routes/settings/billing-error";
+import SettingsBillingError, { loader as SettingsBillingErrorLoader, errorComponent as SettingsBillingErrorErrorComponent } from "./routes/settings/billing-error";
 import SettingsProfile, { loader as SettingsProfileLoader } from "./routes/settings/profile";
-import Users, {
-  loader as UsersLoader,
-  validateSearch as UsersValidateSearch,
-} from "./routes/users";
+import ShowcaseFeatured from "./routes/showcase/featured";
+import Users, { loader as UsersLoader, validateSearch as UsersValidateSearch } from "./routes/users";
 import ShowcaseId from "./routes/showcase/$id";
 import UserId, { loader as UserIdLoader } from "./routes/user/$id";
 import Files from "./routes/files/$";
@@ -44,8 +31,7 @@ import Files from "./routes/files/$";
 // is what actually preserves those literals through the whole nested children tree;
 // "satisfies" checks the shape against RouteDefinition without discarding what "as const"
 // preserved, the way a ":" annotation would.
-export const routeTree = [
-  {
+export const routeTree = [{
     path: "__root",
     component: Root,
     children: [
@@ -59,53 +45,53 @@ export const routeTree = [
             children: [
               {
                 path: "/dashboard",
-                component: AuthDashboardIndex,
+                component: AuthDashboardIndex
               },
               {
                 path: "/dashboard/analytics",
-                component: AuthDashboardAnalytics,
+                component: AuthDashboardAnalytics
               },
-            ],
+            ]
           },
-        ],
+        ]
       },
       {
         path: "/",
-        component: Index,
+        component: Index
       },
       {
         path: "/about",
-        component: About,
+        component: About
       },
       {
         path: "/errors/loader-fail",
         component: ErrorsLoaderFail,
         loader: ErrorsLoaderFailLoader,
-        errorComponent: ErrorsLoaderFailErrorComponent,
+        errorComponent: ErrorsLoaderFailErrorComponent
       },
       {
         path: "/errors/render-fail",
         component: ErrorsRenderFail,
-        errorComponent: ErrorsRenderFailErrorComponent,
+        errorComponent: ErrorsRenderFailErrorComponent
       },
       {
         path: "/navigate",
-        component: Navigate,
+        component: Navigate
       },
       {
         path: "/prefetch",
-        component: Prefetch,
+        component: Prefetch
       },
       {
         path: "/prefetch-demo",
         component: PrefetchDemo,
-        loader: PrefetchDemoLoader,
+        loader: PrefetchDemoLoader
       },
       {
         path: "/prefetch-fail",
         component: PrefetchFail,
         loader: PrefetchFailLoader,
-        errorComponent: PrefetchFailErrorComponent,
+        errorComponent: PrefetchFailErrorComponent
       },
       {
         path: "/settings",
@@ -114,43 +100,46 @@ export const routeTree = [
         children: [
           {
             path: "/settings/billing",
-            component: SettingsBilling,
+            component: SettingsBilling
           },
           {
             path: "/settings/billing-error",
             component: SettingsBillingError,
             loader: SettingsBillingErrorLoader,
-            errorComponent: SettingsBillingErrorErrorComponent,
+            errorComponent: SettingsBillingErrorErrorComponent
           },
           {
             path: "/settings/profile",
             component: SettingsProfile,
-            loader: SettingsProfileLoader,
+            loader: SettingsProfileLoader
           },
-        ],
+        ]
+      },
+      {
+        path: "/showcase/featured",
+        component: ShowcaseFeatured
       },
       {
         path: "/users",
         component: Users,
         loader: UsersLoader,
-        validateSearch: UsersValidateSearch,
+        validateSearch: UsersValidateSearch
       },
       {
         path: "/showcase/$id",
-        component: ShowcaseId,
+        component: ShowcaseId
       },
       {
         path: "/user/$id",
         component: UserId,
-        loader: UserIdLoader,
+        loader: UserIdLoader
       },
       {
         path: "/files/*",
-        component: Files,
+        component: Files
       },
-    ],
-  },
-] as const satisfies RouteDefinition[];
+    ]
+  }] as const satisfies RouteDefinition[];
 
 // Powers Slice 9's typed routes: path -> { params, search, loaderData } for every
 // navigable route, derived once here from the same tree the runtime router reads.
