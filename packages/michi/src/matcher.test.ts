@@ -135,7 +135,9 @@ describe("matchTree", () => {
   });
 
   it("returns empty array when no routes match", () => {
-    const routes: RouteDefinition[] = [{ path: "/about", component: () => null }];
+    const routes: RouteDefinition[] = [
+      { path: "/about", component: () => null },
+    ];
 
     const matches = matchTree(routes, "/nonexistent");
     expect(matches).toHaveLength(0);
@@ -312,5 +314,67 @@ describe("matchTree", () => {
     const matches = matchTree(routes, "/user/%");
     expect(matches).toHaveLength(1);
     expect(matches[0]!.routeId).toBe("__root");
+  });
+});
+
+describe("matchTree route ranking", () => {
+  it("picks a static route over a dynamic sibling both patterns match, regardless of order", () => {
+    const UserById = () => null;
+    const NewUser = () => null;
+
+    // dynamic route listed FIRST - plain first-match-wins would pick it wrongly
+    const routes: RouteDefinition[] = [
+      { path: "/users/$id", component: UserById },
+      { path: "/users/new", component: NewUser },
+    ];
+
+    expect(matchTree(routes, "/users/new")[0]!.routeId).toBe("/users/new");
+
+    const dynamic = matchTree(routes, "/users/atharv");
+    expect(dynamic[0]!.routeId).toBe("/users/$id");
+    expect(dynamic[0]!.params).toEqual({ id: "atharv" });
+  });
+
+  it("picks a dynamic route over a wildcard sibling", () => {
+    const routes: RouteDefinition[] = [
+      { path: "/files/*", component: () => null },
+      { path: "/files/$name", component: () => null },
+    ];
+
+    expect(matchTree(routes, "/files/report")[0]!.routeId).toBe("/files/$name");
+    expect(matchTree(routes, "/files/a/b/c")[0]!.routeId).toBe("/files/*");
+  });
+
+  it("ranks nested sibling groups, not just the top level", () => {
+    const Root = () => null;
+    const routes: RouteDefinition[] = [
+      {
+        path: "__root",
+        component: Root,
+        children: [
+          { path: "/settings/$section", component: () => null },
+          { path: "/settings/profile", component: () => null },
+        ],
+      },
+    ];
+
+    expect(matchTree(routes, "/settings/profile")[1]!.routeId).toBe(
+      "/settings/profile",
+    );
+    expect(matchTree(routes, "/settings/danger")[1]!.routeId).toBe(
+      "/settings/$section",
+    );
+  });
+
+  it("still matches the index route '/' even though it scores lowest", () => {
+    const routes: RouteDefinition[] = [
+      { path: "/", component: () => null },
+      { path: "/about", component: () => null },
+      { path: "/$slug", component: () => null },
+    ];
+
+    expect(matchTree(routes, "/")[0]!.routeId).toBe("/");
+    expect(matchTree(routes, "/about")[0]!.routeId).toBe("/about");
+    expect(matchTree(routes, "/contact")[0]!.routeId).toBe("/$slug");
   });
 });

@@ -14,6 +14,29 @@ function isLayoutRoute(path: string): boolean {
   return path.startsWith("_");
 }
 
+// route ranking
+// Two patterns can match the same URL: "/users/new" matches both "/users/new" and "/users/$id". The more specific one should win no matter which order the two sit in the tree. scoreRoute turns path into a number (higher = more specific); matchTree sorts each sibling group by it before walking, so "first match wins" becomes "highest rank wins".
+
+// Weights follow React Router's computeRouteMatchScore in spirit: a static segment always outweighs a dynamic one, which always outweighs a wildcard, and a deeper path scores higher because it has more segments to add up. now since Michi has no index-route or empty-segment special casaes, so those ones drop out
+
+const STATIC_SEGMENT = 10;
+const DYNAMIC_SEGMENT = 3;
+const WILDCARD_SEGMENT = 1;
+
+function scoreRoute(path: string): number {
+  // layout routes ("_auth", "__root") never match a URL on their own, they only wrap children. Rank them above everything so matchTree always tries entering a layout before falling through to a plain sibling route
+  if (isLayoutRoute(path)) return Number.MAX_SAFE_INTEGER;
+
+  return path
+    .split("/")
+    .filter(Boolean)
+    .reduce((score, segment) => {
+      if (segment === "*") return score + WILDCARD_SEGMENT;
+      if (segment.startsWith("$")) return score + DYNAMIC_SEGMENT;
+      return score + STATIC_SEGMENT;
+    }, 0);
+}
+
 function compile(pattern: string): CompiledPattern {
   const cached = patternCache.get(pattern);
   if (cached) return cached;
@@ -47,7 +70,10 @@ function compile(pattern: string): CompiledPattern {
   return result;
 }
 
-export function matchRoute(pattern: string, path: string): Record<string, string> | null {
+export function matchRoute(
+  pattern: string,
+  path: string,
+): Record<string, string> | null {
   const { regex, paramNames } = compile(pattern);
   const match = path.match(regex);
 
@@ -72,8 +98,16 @@ export function matchRoute(pattern: string, path: string): Record<string, string
 
 // walks the route tree and returns the matched branch as a flat array.
 // matches[0] is always the root layout, matches[1] is the matched child, etc.
-export function matchTree(routes: RouteDefinition[], pathname: string): RouteMatch[] {
-  for (const route of routes) {
+export function matchTree(
+  routes: RouteDefinition[],
+  pathname: string,
+): RouteMatch[] {
+  // Sort a copy (never mutate the caller's array boii) by rank, most specific first. Array.prototype.sort is stable, so equal-scored routes keep their original definition order. this reruns on every navigation; route trees are tens of nodes, so re-sorting is free. If a tree ever got large, hoist this into the Router constructor as scores only depend on path strings, which never change
+  const ranked = [...routes].sort(
+    (a, b) => scoreRoute(b.path) - scoreRoute(a.path),
+  );
+
+  for (const route of ranked) {
     // layout routes always match and wrap their children
     if (isLayoutRoute(route.path)) {
       const layoutMatch: RouteMatch = {
