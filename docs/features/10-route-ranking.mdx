@@ -1,0 +1,100 @@
+---
+title: Route Ranking
+description: Specificity scoring so the right route wins regardless of definition order.
+---
+
+## When Two Patterns Match One URL
+
+`matchTree` walks a route list in array order and returns the first branch that matches. That holds until two patterns match the same URL. `/user/$id` matches `/user/settings` fine, with `id` set to `"settings"`. So if `/user/$id` comes first, navigating to `/user/settings` lands on the wrong page and nothing warns you.
+
+The ambiguity has existed since Slice 2. It never bit anyone because `codegen.ts` sorts each sibling group static before dynamic before wildcard before it writes `routeTree.gen.ts`. Two gaps in leaning on that. It only runs when you run codegen, so hand-built trees (every test, `main.tsx` before Slice 8) get nothing. And it is a three-bucket sort with an alphabetical tiebreak, not a real score, so it cannot reason about path depth.
+
+## `scoreRoute`
+
+```ts matcher.ts
+const STATIC_SEGMENT = 10;
+const DYNAMIC_SEGMENT = 3;
+const WILDCARD_SEGMENT = 1;
+
+function scoreRoute(path: string): number {
+  if (isLayoutRoute(path)) return Number.MAX_SAFE_INTEGER;
+
+  return path
+    .split("/")
+    .filter(Boolean)
+    .reduce((score, segment) => {
+      if (segment === "*") return score + WILDCARD_SEGMENT;
+      if (segment.startsWith("$")) return score + DYNAMIC_SEGMENT;
+      return score + STATIC_SEGMENT;
+    }, 0);
+}
+```
+
+Split the path into segments, add points per segment, return the sum. Static segment 10, dynamic `$param` 3, wildcard `*` 1. Higher total means more specific.
+
+Two properties fall out of per-segment addition. A static segment always outranks a dynamic one at the same position, because 10 beats 3 and the rest of the path adds the same on both sides. A deeper path outranks a shallower one, because it has more segments piling on. `/user/settings` scores 20, `/user/$id` scores 13.
+
+Layout routes short-circuit to `Number.MAX_SAFE_INTEGER`. `_auth` and `__root` never match a URL on their own, they wrap children, so they must be tried before any plain sibling or the walk could match a top-level route and skip the layout branch.
+
+The weights come from React Router's `computeRouteMatchScore`, kept in spirit. React Router also carries an index-route bonus, an empty-segment value, and a splat penalty. Michi drops those. It has no index-route concept at the matcher level, `filter(Boolean)` removes empty segments before scoring, and the ordering outcome for every case that matters is the same without them.
+
+## One Sort in `matchTree`
+
+```ts
+export function matchTree(routes: RouteDefinition[], pathname: string): RouteMatch[] {
+  const ranked = [...routes].sort(
+    (a, b) => scoreRoute(b.path) - scoreRoute(a.path),
+  );
+
+  for (const route of ranked) {
+    // ... unchanged body, iterating `ranked`
+  }
+}
+```
+
+`[...routes]` copies before sorting, so the caller's array is never mutated. The sort is descending, most specific first. `matchTree` recurses by calling itself on `route.children`, so one sort at the entry point covers every level.
+
+It runs on every navigation and every `prefetch` call. Route trees are tens of nodes and the comparator is a split plus a small reduce, so the cost is nothing next to running loaders and re-rendering. If a tree ever got large, the sort could move into the `Router` constructor and run once, since scores depend only on path strings and those never change.
+
+`Array.prototype.sort` is stable, so two routes with the same score keep the order you wrote them. React Router has the same tie behavior.
+
+## Why No Full-Tree Flatten
+
+React Router and TanStack Router flatten the entire route config into one flat list of every matchable path, score each full path, sort once, then match a URL against it top to bottom. They flatten because their route paths are relative segments. The same URL can come from more than one nesting, so ranking has to compare routes across the whole tree.
+
+Michi stores the absolute path on every node (`/settings/billing`, not `billing`), and `matchTree` only recurses into a child group once the parent is confirmed on the path. The patterns that can compete for a given URL are, in practice, siblings in one group. Scoring each route by its own absolute path and sorting each group is enough, and the recursion applies it everywhere.
+
+```ts
+__root > [
+  { path: "/blog", children: [{ path: "/blog/$slug" }] },
+  { path: "/blog/archive" },
+]
+```
+
+Navigate to `/blog/archive`. The sort scores `/blog/archive` at 20 and `/blog` at 10, so `/blog/archive` is tried first and matches before `/blog/$slug` is reached. Same result if both were children of one `/blog` layout: still one sibling group, `archive` at 20 ahead of `$slug` at 13.
+
+## What Sibling Ranking Can't Do
+
+There is a case sibling-level scoring cannot resolve. If a greedy `$param` or `*` lives deep inside a sibling group that gets visited first, it can swallow a URL meant for a more specific route under a later sibling, but only when the earlier group's parent outscored the correct route's parent.
+
+```ts
+__root > [
+  { path: "/x", children: [{ path: "/x/$y/$z" }] },
+  { path: "/$a", children: [{ path: "/$a/b/c" }] },
+]
+```
+
+Navigate to `/foo/b/c`. Only `/$a/b/c` can match it. `/x` sorts first, its subtree has nothing for `/foo/b/c`, `matchTree` continues, `/$a/b/c` matches. Still fine, because "this subtree has no match" falls through to the next sibling.
+
+The real failure needs a greedy pattern inside the earlier, higher-scored subtree that mis-matches a URL intended for a lower-scored sibling's more specific route. It is constructible, but no realistic app layout produces it. The general fix is full-tree flattening, the same thing React Router does. That is deferred. `scoreRoute` is already the piece a flattening pass would reuse.
+
+## codegen Still Sorts
+
+`sortBySpecificity` in `codegen.ts` was the "partial" version of this slice. Now that the runtime ranks, it is no longer load-bearing for correctness. It stays because `routeTree.gen.ts` reads better with specific routes above their dynamic siblings. That is a readability pass now, not a guardrail.
+
+## Key Files
+
+| File         | Purpose                                                       |
+| ------------ | ----------------------------------------------------------- |
+| `matcher.ts` | `scoreRoute`, and the sort at the top of `matchTree`        |
+| `codegen.ts` | `specificityTier` / `sortBySpecificity`, now for readability |

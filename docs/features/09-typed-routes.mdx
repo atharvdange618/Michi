@@ -1,0 +1,160 @@
+---
+title: Typed Routes
+description: Compile-time path and param safety, derived from the route tree.
+---
+
+## Types That Vanish Before Runtime
+
+Every slice before this one wrote code that runs. `matchTree` runs on navigation, `runLoaders` runs on commit, `codegen` runs when you type `pnpm codegen`. Slice 9 writes code that TypeScript reads and never runs. Types are erased before a single line of the app executes, so nothing this slice builds exists in the bundle.
+
+That shapes everything. Since types have nothing to inspect at runtime, they can only be derived from other types, resolved during compilation. For Michi the one source is `typeof routeTree`: the literal shape of the array `routeTree.gen.ts` passes into `new Router(...)`.
+
+## The `as const satisfies` Requirement
+
+A plain annotation destroys the information this slice needs:
+
+```ts
+export const routeTree: RouteDefinition[] = [ ... ];
+```
+
+`: RouteDefinition[]` widens every literal in the array down to `RouteDefinition`'s loose shape. `path: "/user/$id"` becomes `path: string`, a loader's specific return type becomes `Promise<unknown>`. Nothing is left to walk.
+
+The fix needs two parts working together:
+
+```ts
+export const routeTree = [ ... ] as const satisfies RouteDefinition[];
+```
+
+`as const` recursively preserves literal types through the whole nested `children` tree. `satisfies` checks the result against `RouteDefinition` without widening it back, which a `:` annotation would do. `satisfies` alone, without `as const`, still widens, because there is no narrow type to preserve if nothing narrowed it first. Codegen emits this line.
+
+## `RouteRegistry` and Declaration Merging
+
+`defineRoute("/user/$id")` needs your app's route shapes, but it lives in the `michi` package, which has never seen your app. A reusable package importing one consumer's generated file is backwards. `Router` can't carry the information either, because `createContext<Router | null>` isn't generic per call site.
+
+Declaration merging solves it. An `interface` declared in one file can be reopened from another, as long as both resolve to the same module. `types.ts` starts it empty:
+
+```ts
+export interface RouteRegistry {}
+```
+
+The generated `routeTree.gen.ts` reopens it:
+
+```ts
+declare module "michi" {
+  interface RouteRegistry {
+    routes: GeneratedRouteInfo;
+  }
+}
+```
+
+Nothing imports anything across that line. TypeScript merges the two declarations because both name the same interface in the same module. Once `main.tsx` imports `routeTree` (which it already does to build the router), the merge happens, and every package type that reads `RouteRegistry["routes"]` resolves against your real routes.
+
+Before any app's generated file exists, `RouteRegistry` is `{}`. Indexing `["routes"]` on an empty interface is a hard compile error, not a soft "nothing yet". Every type built on it needs an explicit fallback, or the package can't compile standalone.
+
+## Walking the Tree at the Type Level
+
+`typed.ts` is `codegen.ts`'s mirror. Codegen reads a route tree off the filesystem and writes text. `typed.ts` reads a route tree type and writes types. Same "walk a tree, produce output" shape as `matchTree`, one level up, running during type checking.
+
+`FlattenRoutes` is the single recursive walk everything else builds on:
+
+```ts
+type FlattenRoutes<Tree extends readonly AnyRouteNode[]> = Tree extends readonly [
+  infer Head extends AnyRouteNode,
+  ...infer Tail extends readonly AnyRouteNode[],
+]
+  ?
+      | (IsLayoutPath<Head["path"]> extends true
+          ? never
+          : {
+              path: Head["path"];
+              params: ParsePathParams<Head["path"]>;
+              search: Head extends { validateSearch: (raw: any) => infer S }
+                ? S
+                : Record<string, string>;
+              loaderData: Head extends { loader: (ctx: any) => Promise<infer D> }
+                ? D
+                : undefined;
+            })
+      | (Head extends { children: infer C extends readonly AnyRouteNode[] }
+          ? FlattenRoutes<C>
+          : never)
+      | FlattenRoutes<Tail>
+  : never;
+```
+
+Three things get unioned at every node: the node's own entry (skipped for layout routes, the same rule `matchTree` applies at runtime, since you can never `navigate("__root")`), the walk into `children`, and the walk into the rest of the array. A tree becomes one flat union of every navigable route.
+
+The `search` and `loaderData` fallbacks mirror the runtime exactly. No `validateSearch` means `applySearch` passes the raw object through, so the type falls back to `Record<string, string>`, not `unknown`. No `loader` means `loaderData` stays `undefined`, so that is the fallback. A wrong fallback here would be a type that lies about what a component receives, with nothing to flag it.
+
+`PathsOf` is one property access on the union. `RouteInfoOf` remaps it into a `path -> { params, search, loaderData }` table with a mapped type's `as` clause.
+
+## `ParsePathParams`
+
+```ts
+export type ParsePathParams<Path extends string> = {
+  [K in ParamNames<Split<Path, "/">>]: string;
+};
+```
+
+`Split` is type-level `string.split("/")`. `ParamNames` walks the segment tuple, collecting anything that starts with `$` (minus the `$`) or is exactly `*` (as the literal key `"*"`). `"/user/$id"` produces `{ id: string }`. `"/files/*"` produces `{ "*": string }`. `"/about"` produces `{}`.
+
+The wildcard key is the literal `"*"` because `matchRoute` pushes that exact string onto its `paramNames` array at runtime. A different name here would describe a params object the router never hands you.
+
+## `NavigateTo` and Template Literal Types
+
+Going the other direction, tuple back to string:
+
+```ts
+type SubstituteSegment<S extends string> = S extends `$${string}`
+  ? string
+  : S extends "*"
+    ? string
+    : S;
+```
+
+A `$param` or bare `*` segment becomes `${string}`, a "any string goes here" hole. `JoinSegments` stitches segments back with slashes. `"/user/$id"` becomes `` `/user/${string}` ``, a real matchable type: `"/user/atharv"` satisfies it, a typo does not.
+
+```ts
+type WithOptionalSearch<P extends string> = P | `${P}?${string}`;
+export type NavigateTo = WithOptionalSearch<RegisteredPath> | `http${string}`;
+```
+
+`WithOptionalSearch` allows a `?query` suffix on any registered path, since the runtime already passes raw query strings through for every route. The `` `http${string}` `` branch keeps external URLs legal, which `router.navigate()` has always permitted. Autocompletion falls out for free: TypeScript offers every static path member, and the `${string}` holes show up as "type it yourself".
+
+## `defineRoute`
+
+```ts
+export function defineRoute<Path extends keyof RegisteredRoutes>(_path: Path) {
+  return {
+    useParams: (): RegisteredRoutes[Path]["params"] => useParams(),
+    useSearch: (): RegisteredRoutes[Path]["search"] => useSearch(),
+    useLoaderData: (): RegisteredRoutes[Path]["loaderData"] => useLoaderData(),
+  };
+}
+```
+
+Pins the three hooks to one route's types so a call site never repeats a generic. `_path` exists only to let TypeScript infer `Path` from the literal string you typed. Nothing about the behavior depends on the value, only the type does. The three closures call the same generic hooks every earlier slice built, with the type parameter supplied automatically.
+
+```ts
+export const Route = defineRoute("/user/$id");
+
+export default function UserPage() {
+  const user = Route.useLoaderData(); // typed from loader's return, no generic
+  const { id } = Route.useParams();   // { id: string }
+}
+```
+
+A route file that never imports `defineRoute` works exactly as before. This is purely additive.
+
+## What This Slice Did Not Build
+
+The object-form `navigate({ to, params })` API was skipped. The string form catches a typo'd or nonexistent path, but by the time you've written `"/user/atharv"` the "this came from a `$id` slot" information is gone, so it does no param-shape checking. The object form is a follow-up, not a bug.
+
+## Key Files
+
+| File          | Purpose                                                              |
+| ------------- | ------------------------------------------------------------------- |
+| `typed.ts`    | `Split`, `ParsePathParams`, `FlattenRoutes`, `PathsOf`, `RouteInfoOf`, `NavigateTo` |
+| `react.tsx`   | `defineRoute` and the typed hook wrappers                           |
+| `codegen.ts`  | emits `as const satisfies` and the `declare module "michi"` block   |
+| `types.ts`    | `RouteRegistry`, the empty interface declaration merging reopens    |
