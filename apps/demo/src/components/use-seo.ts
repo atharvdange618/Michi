@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 
-const SITE_URL = "https://michi.atharvdangedev.in";
+const SITE_URL = "https://michi.atharvdange.com";
 const SITE_NAME = "Michi";
 const DEFAULT_DESCRIPTION =
   "Michi is a client-side router for React, built from first principles. No library abstractions - just the History API, regex pattern matching, and React primitives. Learn how routers actually work.";

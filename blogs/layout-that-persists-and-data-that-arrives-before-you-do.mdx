@@ -17,7 +17,7 @@ description: "Continuing to build a client-side router from scratch. This post c
 summary: "Continuing the client-side router build from scratch. Nested routes use an Outlet pattern backed by React context to keep parent layouts mounted across navigations. Data loaders flip the model from fetch-on-render to render-as-you-fetch, running parallel requests with promise.all and guarding against stale responses with race condition handling."
 ---
 
-In the [previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react), we built the foundation: the History API changes URLs without reloads, route patterns compile into regex, and `useSyncExternalStore` bridges the router's external state into React's render cycle without tearing. That works. But it has a problem.
+In the [previous post](https://tty.atharvdange.com/blog/what-happens-when-you-click-a-link-in-react), we built the foundation: the History API changes URLs without reloads, route patterns compile into regex, and `useSyncExternalStore` bridges the router's external state into React's render cycle without tearing. That works. But it has a problem.
 
 Every page renders in isolation. Navigate to `/about`, you get the About component. Navigate to `/user/atharv`, you get the User component. Nothing shared between them. The moment you want a navbar that stays alive across navigations, a sidebar that persists, or data that arrives before the component mounts, the flat architecture breaks down.
 
@@ -35,7 +35,7 @@ In a router, that shared wall is a layout. A component that wraps other componen
 
 ## From Flat List to Tree
 
-In the [previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react), routes were a flat array:
+In the [previous post](https://tty.atharvdange.com/blog/what-happens-when-you-click-a-link-in-react), routes were a flat array:
 
 ```ts
 new Router([
@@ -78,7 +78,7 @@ The tree expresses ownership. Routes that share a layout become children of that
 
 ## matchTree: Walking the Route Tree
 
-The matching function from [the previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) used `matchRoute` on a flat array. The new version, `matchTree`, walks a tree and returns a flat array of matches:
+The matching function from [the previous post](https://tty.atharvdange.com/blog/what-happens-when-you-click-a-link-in-react) used `matchRoute` on a flat array. The new version, `matchTree`, walks a tree and returns a flat array of matches:
 
 ```ts
 export function matchTree(
@@ -764,7 +764,7 @@ Every step connects to a line of code. No magic anywhere in the chain.
 
 ## What We Built (And What Is Next)
 
-In two slices, the router went from a flat list of independent pages to a tree of nested layouts with data loading. The core loop from the [previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) did not change, it just got richer. History notifies Router, Router matches routes, React renders components. The matching now walks a tree instead of a flat array. The rendering now uses a depth counter to nest components. The data now arrives before components mount.
+In two slices, the router went from a flat list of independent pages to a tree of nested layouts with data loading. The core loop from the [previous post](https://tty.atharvdange.com/blog/what-happens-when-you-click-a-link-in-react) did not change, it just got richer. History notifies Router, Router matches routes, React renders components. The matching now walks a tree instead of a flat array. The rendering now uses a depth counter to nest components. The data now arrives before components mount.
 
 Coming up: error boundaries for per-route error isolation, prefetching on hover for instant transitions, search params as first-class typed URL state, file-based routing with code generation, and full type safety across the entire route tree.
 

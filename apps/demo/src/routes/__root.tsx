@@ -6,7 +6,7 @@ const structuredData = {
   "@context": "https://schema.org",
   "@type": "WebSite",
   name: "Michi",
-  url: "https://michi.atharvdangedev.in",
+  url: "https://michi.atharvdange.com",
   description:
     "A client-side router for React, built from first principles. No library abstractions - just the History API, regex pattern matching, and React primitives.",
   author: {

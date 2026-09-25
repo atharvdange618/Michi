@@ -141,7 +141,7 @@ export default function AboutPage() {
             rendering-strategies
           </a>
           <a
-            href="https://tty.atharvdangedev.in/blog/rendering-strategies"
+            href="https://tty.atharvdange.com/blog/rendering-strategies"
             target="_blank"
             rel="noopener noreferrer"
             style={outlineBtnStyle}
@@ -200,7 +200,7 @@ export default function AboutPage() {
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           <a
-            href="https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react"
+            href="https://tty.atharvdange.com/blog/what-happens-when-you-click-a-link-in-react"
             target="_blank"
             rel="noopener noreferrer"
             style={blogCardStyle}
@@ -240,7 +240,7 @@ export default function AboutPage() {
             </span>
           </a>
           <a
-            href="https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do"
+            href="https://tty.atharvdange.com/blog/layout-that-persists-and-data-that-arrives-before-you-do"
             target="_blank"
             rel="noopener noreferrer"
             style={blogCardStyle}
@@ -280,7 +280,7 @@ export default function AboutPage() {
             </span>
           </a>
           <a
-            href="https://tty.atharvdangedev.in/blog/per-route-error-boundaries-and-prefetch-on-hover"
+            href="https://tty.atharvdange.com/blog/per-route-error-boundaries-and-prefetch-on-hover"
             target="_blank"
             rel="noopener noreferrer"
             style={blogCardStyle}
@@ -320,7 +320,7 @@ export default function AboutPage() {
             </span>
           </a>
           <a
-            href="https://tty.atharvdangedev.in/blog/the-url-remembers-and-the-filesystem-already-knows"
+            href="https://tty.atharvdange.com/blog/the-url-remembers-and-the-filesystem-already-knows"
             target="_blank"
             rel="noopener noreferrer"
             style={blogCardStyle}

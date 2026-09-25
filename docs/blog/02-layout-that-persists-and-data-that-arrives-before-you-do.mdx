@@ -24,7 +24,7 @@ In a router, that shared wall is a layout. A component that wraps other componen
 
 ## From Flat List to Tree
 
-In the [previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react), routes were a flat array:
+In the [previous post](https://tty.atharvdange.com/blog/what-happens-when-you-click-a-link-in-react), routes were a flat array:
 
 ```ts
 new Router([
@@ -67,7 +67,7 @@ The tree expresses ownership. Routes that share a layout become children of that
 
 ## matchTree: Walking the Route Tree
 
-The matching function from [the previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) used `matchRoute` on a flat array. The new version, `matchTree`, walks a tree and returns a flat array of matches:
+The matching function from [the previous post](https://tty.atharvdange.com/blog/what-happens-when-you-click-a-link-in-react) used `matchRoute` on a flat array. The new version, `matchTree`, walks a tree and returns a flat array of matches:
 
 ```ts
 export function matchTree(
@@ -753,7 +753,7 @@ Every step connects to a line of code. No magic anywhere in the chain.
 
 ## What We Built (And What Is Next)
 
-In two slices, the router went from a flat list of independent pages to a tree of nested layouts with data loading. The core loop from the [previous post](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) did not change, it just got richer. History notifies Router, Router matches routes, React renders components. The matching now walks a tree instead of a flat array. The rendering now uses a depth counter to nest components. The data now arrives before components mount.
+In two slices, the router went from a flat list of independent pages to a tree of nested layouts with data loading. The core loop from the [previous post](https://tty.atharvdange.com/blog/what-happens-when-you-click-a-link-in-react) did not change, it just got richer. History notifies Router, Router matches routes, React renders components. The matching now walks a tree instead of a flat array. The rendering now uses a depth counter to nest components. The data now arrives before components mount.
 
 Coming up: error boundaries for per-route error isolation, prefetching on hover for instant transitions, search params as first-class typed URL state, file-based routing with code generation, and full type safety across the entire route tree.
 

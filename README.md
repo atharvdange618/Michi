@@ -12,9 +12,9 @@ It isn't trying to replace React Router or TanStack Router. It's here to answer 
 
 The name 道 (michi) is Japanese for "path" or "the way." Seemed fitting for a project about understanding the path every navigation takes.
 
-**[Documentation](https://michi-docs.vercel.app)** | **[Demo](https://michi.atharvdangedev.in)** | **[Blog](https://michi-docs.vercel.app/blog)**
+**[Documentation](https://michi-docs.vercel.app)** | **[Demo](https://michi.atharvdange.com)** | **[Blog](https://michi-docs.vercel.app/blog)**
 
-**[GitHub](https://github.com/atharvdange618)** | **[X/Twitter](https://x.com/atharvdangedev)** | **[Website](https://atharvdangedev.in)**
+**[GitHub](https://github.com/atharvdange618)** | **[X/Twitter](https://x.com/atharvdangedev)** | **[Website](https://atharvdange.com)**
 
 ## The journey
 
@@ -104,11 +104,11 @@ pnpm docs:dev
 
 Every slice has a corresponding deep-dive article explaining both the implementation and the architectural reasoning behind it.
 
-- [What Actually Happens When You Click a Link in React](https://tty.atharvdangedev.in/blog/what-happens-when-you-click-a-link-in-react) Slices 1-2: History API + Route Matching
-- [Layouts That Persist and Data That Arrives Before You Do](https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do) Slices 3-4: Nested Routes + Data Loaders
-- [Per-Route Error Boundaries and Prefetch on Hover](https://tty.atharvdangedev.in/blog/per-route-error-boundaries-and-prefetch-on-hover) Slices 5-6: Error Boundaries and Prefetch on Hover
-- [The URL Remembers, and the Filesystem Already Knows](https://tty.atharvdangedev.in/blog/the-url-remembers-and-the-filesystem-already-knows) Slices 7-8: Search Params + File-Based Codegen
-- [The Types Know Your Routes, and the Matcher Knows Which Wins](https://tty.atharvdangedev.in/blog/the-types-know-your-routes-and-the-matcher-knows-which-wins) Slices 9-10: Typed Routes + Route Ranking
+- [What Actually Happens When You Click a Link in React](https://tty.atharvdange.com/blog/what-happens-when-you-click-a-link-in-react) Slices 1-2: History API + Route Matching
+- [Layouts That Persist and Data That Arrives Before You Do](https://tty.atharvdange.com/blog/layout-that-persists-and-data-that-arrives-before-you-do) Slices 3-4: Nested Routes + Data Loaders
+- [Per-Route Error Boundaries and Prefetch on Hover](https://tty.atharvdange.com/blog/per-route-error-boundaries-and-prefetch-on-hover) Slices 5-6: Error Boundaries and Prefetch on Hover
+- [The URL Remembers, and the Filesystem Already Knows](https://tty.atharvdange.com/blog/the-url-remembers-and-the-filesystem-already-knows) Slices 7-8: Search Params + File-Based Codegen
+- [The Types Know Your Routes, and the Matcher Knows Which Wins](https://tty.atharvdange.com/blog/the-types-know-your-routes-and-the-matcher-knows-which-wins) Slices 9-10: Typed Routes + Route Ranking
 
 The goal isn't just to explain how Michi works. It's to explain why modern routers were designed this way in the first place.
 

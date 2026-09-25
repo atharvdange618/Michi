@@ -12,7 +12,7 @@ Slice 5 asks: what happens when a loader throws, or a component crashes mid-rend
 
 Slice 6 asks a different kind of question: by the time a user clicks a link, how much of the work could already be done? A cursor sitting on top of a link for half a second is free information. If the loader starts running the moment the hover begins instead of the moment the click lands, the click can feel instant.
 
-Both slices share something in common with everything built so far: neither introduces a parallel system. Error boundaries slot into the exact same `<Outlet />` tree that already exists. Prefetch reuses the exact same `matchTree` + `runLoaders` pipeline that real navigation already calls. That's the thread connecting this post to the [previous one](https://tty.atharvdangedev.in/blog/layout-that-persists-and-data-that-arrives-before-you-do): new capability, same machinery.
+Both slices share something in common with everything built so far: neither introduces a parallel system. Error boundaries slot into the exact same `<Outlet />` tree that already exists. Prefetch reuses the exact same `matchTree` + `runLoaders` pipeline that real navigation already calls. That's the thread connecting this post to the [previous one](https://tty.atharvdange.com/blog/layout-that-persists-and-data-that-arrives-before-you-do): new capability, same machinery.
 
 ## What Happens When a Loader Throws, Right Now
 

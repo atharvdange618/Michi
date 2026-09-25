@@ -18,7 +18,7 @@ export function Footer() {
       <span>
         Built by{" "}
         <a
-          href="https://atharvdangedev.in"
+          href="https://atharvdange.com"
           target="_blank"
           rel="noopener noreferrer"
           style={{
